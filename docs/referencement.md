@@ -39,6 +39,6 @@ La route lit `public/images/brand/degrade-trame.jpg` à l'exécution. Le dossier
 
 ## Après une mise en ligne
 
-- [Search Console](https://search.google.com/search-console) : propriété de domaine `geomtl.com`, plan du site `https://www.geomtl.com/sitemap.xml`.
+- [Search Console](https://search.google.com/search-console) : propriété `https://www.geomtl.com/`, validée par la balise `verification` de `app/[locale]/layout.tsx` (à ne pas retirer). Plan du site : `https://www.geomtl.com/sitemap.xml`.
 - [Test des résultats enrichis](https://search.google.com/test/rich-results) sur `https://www.geomtl.com/fr`, pour les données de l'événement.
 - [Bing Webmaster Tools](https://www.bing.com/webmasters) : importer depuis Search Console.

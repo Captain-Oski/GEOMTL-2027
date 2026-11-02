@@ -45,6 +45,9 @@ export async function generateMetadata(
   return {
     // Adresses absolues des aperçus de partage (opengraph-image) et des icônes
     metadataBase: new URL(URL_SITE),
+    // Preuve de propriété pour Google Search Console (propriété https://www.geomtl.com/) :
+    // à garder en place, Google la revérifie régulièrement
+    verification: { google: '49AlPWI4X_f2NglrcoOJZU96Cr60_RdZ2gk0GCt9JKI' },
     title: {
       default: 'GÉOMTL 2027',
       template: '%s | GÉOMTL 2027'
