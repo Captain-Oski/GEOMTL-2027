@@ -29,7 +29,7 @@ Toutes les migrations sont dans [`supabase/migrations/`](./migrations/).
 | V009 | [V009__durcissement_securite.sql](./migrations/V009__durcissement_securite.sql) | `search_path` fixe sur `get_my_role`, `handle_new_user` et `set_updated_at` · `handle_new_user` retirée de l'API · choix documentés (vues publiques, `get_my_role`) | 2026-10-23 | ✅ |
 | V010 | [V010__adresse_telephone_organisation.sql](./migrations/V010__adresse_telephone_organisation.sql) | Adresse civique et téléphone de l'organisation : demandes, partenaires et exposants | 2026-10-26 | ✅ |
 | V011 | [V011__droits_lecture_seule.sql](./migrations/V011__droits_lecture_seule.sql) | Lecture seule avec la clé publique : vues publiques de GÉOMTL et tables géospatiales du schéma `public` | 2026-11-02 | ✅ |
-| V012 | [V012__choix_de_kiosques.sql](./migrations/V012__choix_de_kiosques.sql) | 2e et 3e choix de kiosque facultatifs sur les demandes | 2026-11-02 | ⏳ |
+| V012 | [V012__choix_de_kiosques.sql](./migrations/V012__choix_de_kiosques.sql) | 2e et 3e choix de kiosque facultatifs sur les demandes | 2026-11-02 | ✅ |
 
 ---
 
