@@ -9,11 +9,11 @@ La page **Devenir partenaire** (`/fr/devenir-partenaire`) affiche le plan intera
 ### 1. Le visiteur fait sa demande
 
 - Trois boutons ouvrent le même formulaire, dans une fenêtre : **« Devenir partenaire »** tout en haut de la page, et **« Devenir partenaire ou exposant »** en haut et en bas du plan. La page ne contient qu'un seul formulaire, que ces boutons se partagent.
-- Un clic sur un kiosque libre du plan le présélectionne dans le formulaire ; le bouton du haut de la page l'ouvre sans kiosque choisi.
+- Un clic sur un kiosque libre du plan le présélectionne comme 1er choix dans le formulaire ; le bouton du haut de la page l'ouvre sans kiosque choisi.
 - Sous le plan, la ligne « Des questions? Écrivez-nous à partenariat@geomtl.com » remplace l'ancien formulaire « Nous contacter », qui ouvrait le logiciel de courriel du visiteur.
 - Le formulaire demande :
   - le niveau (Exposant, Bronze, Argent, Or, Commandite de la soirée réseautage ou À déterminer) ;
-  - le kiosque souhaité, parmi les kiosques disponibles, ou « Sans préférence » ;
+  - jusqu'à trois kiosques souhaités par ordre de préférence, parmi les kiosques disponibles, ou « Sans préférence ». Le 2e et le 3e choix sont facultatifs ;
   - l'organisation ;
   - le **responsable de la facturation** et le **responsable du kiosque sur place lors de l'événement** (nom, courriel, téléphone), avec une case « Même personne que le responsable de la facturation » ;
   - un message facultatif et le consentement (Loi 25).
@@ -30,12 +30,12 @@ La page **Devenir partenaire** (`/fr/devenir-partenaire`) affiche le plan intera
 - La pastille du menu **Partenaires et exposants** compte les nouvelles demandes. Quand il y en a, la page s'ouvre sur l'onglet « Demandes ».
 - Le détail d'une demande offre :
   - **En traitement**, **Refuser**, **Archiver** et **Indésirable** ;
-  - **Accepter** : crée la fiche préremplie (organisation, kiosque souhaité, message ; le responsable de la facturation en contact principal et le responsable du kiosque en contact secondaire) et la relie à la demande. Le niveau « Exposant » crée une fiche d'exposant ; Bronze, Argent, Or et la commandite de la soirée créent une fiche de partenaire du type correspondant. Les deux apparaissent dans l'onglet « Organisations ». **Le kiosque reste disponible.**
+  - **Accepter** : crée la fiche préremplie (organisation, premier kiosque demandé encore libre, message ; le responsable de la facturation en contact principal et le responsable du kiosque en contact secondaire) et la relie à la demande. Le niveau « Exposant » crée une fiche d'exposant ; Bronze, Argent, Or et la commandite de la soirée créent une fiche de partenaire du type correspondant. Les deux apparaissent dans l'onglet « Organisations ». **Le kiosque reste disponible.**
   - des notes internes, jamais publiées.
 
 ### 4. Le comité confirme la réservation (onglet « Plan des kiosques »)
 
-- Un clic sur un kiosque ouvre sa fiche, avec les demandes en cours pour ce kiosque.
+- Un clic sur un kiosque ouvre sa fiche, avec les demandes en cours qui le visent, quel que soit le rang du choix.
 - **Confirmer la réservation** : choisir la fiche liée (qui reprend le nom, le logo et le site), vérifier le nom affiché, puis confirmer. Le kiosque passe à « Indisponible » sur le site public, avec le logo.
 - **Libérer le kiosque** : il redevient « Disponible ».
 - Si deux membres du comité confirment le même kiosque en même temps, seul le premier réussit ; le second reçoit un message d'erreur.
@@ -58,7 +58,7 @@ Contrôles de la route, dans l'ordre :
 | Envoi moins de 3 secondes après l'ouverture du formulaire | 400 |
 | Validation des champs (la même que dans le formulaire) | 400 |
 | Au plus 5 demandes par heure par adresse IP et 5 par jour par courriel | 429 |
-| Kiosque déjà réservé | 409 |
+| Tous les kiosques choisis déjà réservés (un choix réservé parmi d'autres est retiré de la demande, et le visiteur en est informé) | 409 |
 
 Les courriels sont en texte brut : rien de ce que tape le visiteur n'est interprété comme du HTML.
 

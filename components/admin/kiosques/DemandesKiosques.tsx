@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { accepterDemande, changerStatutDemande, enregistrerNotesDemande } from '@/lib/actions/kiosques'
-import { LIBELLES_NIVEAUX } from '@/lib/demandes-kiosques'
+import { LIBELLES_NIVEAUX, choixDemande } from '@/lib/demandes-kiosques'
 import type { DemandeKiosque, Kiosque, NiveauDemande, StatutDemande } from '@/lib/supabase/types'
 
 const STATUTS: Record<StatutDemande, { libelle: string; classe: string }> = {
@@ -16,6 +16,8 @@ const STATUTS: Record<StatutDemande, { libelle: string; classe: string }> = {
 }
 
 type Filtre = 'actives' | 'toutes' | StatutDemande
+
+const RANGS = ['1er choix', '2e choix', '3e choix']
 
 type Executer = (fn: () => Promise<{ error?: string; avertissement?: string }>, succes?: string) => Promise<boolean>
 
@@ -43,7 +45,7 @@ export function DemandesKiosques({
     [demandes, filtre]
   )
   const choisie = demandes.find((d) => d.id === choisieId) ?? null
-  const reserve = (n: number | null) => n !== null && kiosques.find((k) => k.numero === n)?.statut === 'reserve'
+  const reserve = (n: number) => kiosques.find((k) => k.numero === n)?.statut === 'reserve'
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1fr_24rem]">
@@ -87,10 +89,13 @@ export function DemandesKiosques({
                   >
                     <td className="py-3 px-3 text-gray-400 whitespace-nowrap">{new Date(d.created_at).toLocaleDateString('fr-CA')}</td>
                     <td className="py-3 px-3 text-white">
-                      {d.kiosque_numero ?? <span className="text-gray-500">Sans préférence</span>}
-                      {reserve(d.kiosque_numero) && d.statut !== 'acceptee' && (
-                        <span title="Ce kiosque est déjà réservé" className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300">déjà réservé</span>
-                      )}
+                      {choixDemande(d).length === 0 && <span className="text-gray-500">Sans préférence</span>}
+                      {choixDemande(d).map((n, i) => (
+                        <span key={n}>
+                          {i > 0 && <span className="text-gray-500"> · </span>}
+                          <span title={reserve(n) ? 'Ce kiosque est déjà réservé' : RANGS[i]} className={reserve(n) && d.statut !== 'acceptee' ? 'text-amber-300 line-through' : ''}>{n}</span>
+                        </span>
+                      ))}
                     </td>
                     <td className="py-3 px-3">
                       <button type="button" onClick={() => setChoisieId(d.id)} className="text-left font-medium text-white hover:underline">
@@ -117,7 +122,7 @@ export function DemandesKiosques({
         <DetailDemande
           key={choisie.id}
           demande={choisie}
-          kiosqueReserve={reserve(choisie.kiosque_numero)}
+          reserve={reserve}
           peutModifier={peutModifier}
           executer={executer}
           ouvrirKiosque={ouvrirKiosque}
@@ -133,17 +138,19 @@ export function DemandesKiosques({
 
 function DetailDemande({
   demande: d,
-  kiosqueReserve,
+  reserve,
   peutModifier,
   executer,
   ouvrirKiosque,
 }: {
   demande: DemandeKiosque
-  kiosqueReserve: boolean
+  reserve: (numero: number) => boolean
   peutModifier: boolean
   executer: Executer
   ouvrirKiosque: (numero: number | null) => void
 }) {
+  const choix = choixDemande(d)
+  const libres = choix.filter((n) => !reserve(n))
   const [niveau, setNiveau] = useState<NiveauDemande | ''>(d.niveau === 'a_determiner' ? '' : d.niveau)
   const [notes, setNotes] = useState(d.notes_internes ?? '')
   const [envoi, setEnvoi] = useState(false)
@@ -172,15 +179,31 @@ function DetailDemande({
         <div>
           <h2 className="text-lg font-bold text-white">{d.organisation}</h2>
           <p className="text-xs text-gray-500">
-            {d.kiosque_numero ? `Kiosque ${d.kiosque_numero}` : 'Sans préférence de kiosque'} · {LIBELLES_NIVEAUX[d.niveau].fr} · reçue le {new Date(d.created_at).toLocaleString('fr-CA')}
+            {LIBELLES_NIVEAUX[d.niveau].fr} · reçue le {new Date(d.created_at).toLocaleString('fr-CA')}
           </p>
         </div>
         <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${STATUTS[d.statut].classe}`}>{STATUTS[d.statut].libelle}</span>
       </div>
 
-      {kiosqueReserve && d.statut !== 'acceptee' && (
+      <div>
+        <p className="text-xs text-gray-500 mb-1">Kiosques demandés</p>
+        {choix.length === 0 ? (
+          <p className="text-sm text-gray-200">Sans préférence</p>
+        ) : (
+          <ul className="space-y-1 text-sm text-gray-200">
+            {choix.map((n, i) => (
+              <li key={n}>
+                <span className="text-gray-500">{RANGS[i]} :</span> kiosque {n}
+                {reserve(n) && <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300">déjà réservé</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {choix.length > 0 && libres.length === 0 && d.statut !== 'acceptee' && (
         <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
-          Le kiosque {d.kiosque_numero} est déjà réservé : proposez un autre kiosque à cette organisation.
+          {choix.length > 1 ? 'Tous les kiosques demandés sont déjà réservés' : 'Le kiosque demandé est déjà réservé'} : proposez-en un autre à cette organisation.
         </p>
       )}
 
@@ -226,12 +249,19 @@ function DetailDemande({
 
           {d.statut === 'acceptee' ? (
             <div className="space-y-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200">
-              <p>Demande acceptée{ficheLien ? ' : la fiche est créée.' : '.'} Le kiosque reste disponible sur le site jusqu&apos;à la confirmation.</p>
+              <p>Demande acceptée{ficheLien ? ' : la fiche est créée.' : '.'} Les kiosques restent disponibles sur le site jusqu&apos;à la confirmation.</p>
               <div className="flex flex-wrap gap-2">
                 {ficheLien && <Link href={ficheLien} className={`${bouton} bg-white/10 text-white hover:bg-white/20`}>Ouvrir la fiche</Link>}
-                <button type="button" onClick={() => ouvrirKiosque(d.kiosque_numero)} className={`${bouton} bg-blue-600 text-white hover:bg-blue-500`}>
-                  {d.kiosque_numero ? `Confirmer la réservation du kiosque ${d.kiosque_numero}` : 'Choisir un kiosque sur le plan'}
-                </button>
+                {libres.map((n) => (
+                  <button key={n} type="button" onClick={() => ouvrirKiosque(n)} className={`${bouton} bg-blue-600 text-white hover:bg-blue-500`}>
+                    Confirmer le kiosque {n}
+                  </button>
+                ))}
+                {libres.length === 0 && (
+                  <button type="button" onClick={() => ouvrirKiosque(null)} className={`${bouton} bg-blue-600 text-white hover:bg-blue-500`}>
+                    Choisir un kiosque sur le plan
+                  </button>
+                )}
               </div>
             </div>
           ) : (
@@ -257,7 +287,7 @@ function DetailDemande({
                   Accepter
                 </button>
               </div>
-              <p className="text-[11px] text-gray-500">Crée une fiche {niveau === 'exposant' ? 'Exposants' : 'Partenaires'} préremplie. Le kiosque n&apos;est pas encore réservé.</p>
+              <p className="text-[11px] text-gray-500">Crée une fiche {niveau === 'exposant' ? 'Exposants' : 'Partenaires'} préremplie, avec le premier choix encore libre. Le kiosque n&apos;est pas encore réservé.</p>
             </div>
           )}
 

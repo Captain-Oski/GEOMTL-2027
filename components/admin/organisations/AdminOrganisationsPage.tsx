@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import PlanKiosques from '@/components/partners/PlanKiosques'
 import { DemandesKiosques } from '@/components/admin/kiosques/DemandesKiosques'
+import { choixDemande } from '@/lib/demandes-kiosques'
 import { ListeOrganisations } from './ListeOrganisations'
 import { confirmerReservation, libererKiosque, modifierReservation } from '@/lib/actions/kiosques'
 import type { DemandeKiosque, Exhibitor, Kiosque, Partner } from '@/lib/supabase/types'
@@ -156,7 +157,7 @@ export function AdminOrganisationsPage({
             <FicheKiosque
               key={choisi ?? 'aucun'}
               kiosque={kiosques.find((k) => k.numero === choisi) ?? null}
-              demandes={demandes.filter((d) => d.kiosque_numero === choisi && ['nouvelle', 'en_traitement', 'acceptee'].includes(d.statut))}
+              demandes={demandes.filter((d) => choisi !== null && choixDemande(d).includes(choisi) && ['nouvelle', 'en_traitement', 'acceptee'].includes(d.statut))}
               fiches={fiches}
               peutModifier={peutModifier}
               executer={executer}
@@ -261,7 +262,10 @@ function FicheKiosque({
           <p className="font-semibold">Demandes en cours pour ce kiosque :</p>
           <ul className="mt-1 list-disc pl-4">
             {demandes.map((d) => (
-              <li key={d.id}>{d.organisation} ({d.statut === 'acceptee' ? 'acceptée' : d.statut === 'en_traitement' ? 'en traitement' : 'nouvelle'})</li>
+              <li key={d.id}>
+                {d.organisation} ({kiosque ? `${['1er', '2e', '3e'][choixDemande(d).indexOf(kiosque.numero)]} choix, ` : ''}
+                {d.statut === 'acceptee' ? 'acceptée' : d.statut === 'en_traitement' ? 'en traitement' : 'nouvelle'})
+              </li>
             ))}
           </ul>
         </div>

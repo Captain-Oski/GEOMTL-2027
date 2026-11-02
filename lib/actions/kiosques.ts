@@ -3,6 +3,7 @@
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { ETIQUETTE_KIOSQUES } from '@/lib/data/kiosques'
+import { choixDemande } from '@/lib/demandes-kiosques'
 import type { NiveauDemande, PartnerType, StatutDemande } from '@/lib/supabase/types'
 
 // Actions de l'admin sur les kiosques et les demandes de réservation.
@@ -91,7 +92,8 @@ const TYPE_PARTENAIRE: Partial<Record<NiveauDemande, PartnerType>> = {
 
 // Accepter : crée la fiche exposant ou partenaire préremplie et la relie à la
 // demande. Le kiosque reste disponible en public jusqu'à confirmerReservation.
-// La commandite de la soirée n'est liée à aucun kiosque, sauf si un numéro a été demandé.
+// La fiche reprend le premier choix encore libre. La commandite de la soirée n'est
+// liée à aucun kiosque, sauf si un numéro a été demandé.
 export async function accepterDemande(id: string, niveau: Exclude<NiveauDemande, 'a_determiner'>): Promise<Resultat> {
   const check = await assertEditeur()
   if (check.error) return check
@@ -106,7 +108,11 @@ export async function accepterDemande(id: string, niveau: Exclude<NiveauDemande,
   if (demande.fiche_exhibitor_id || demande.fiche_partner_id) return { error: 'Cette demande a déjà une fiche.' }
 
   const date = new Date(demande.created_at).toLocaleDateString('fr-CA')
-  const kiosque: number | null = demande.kiosque_numero
+  const choix = choixDemande(demande)
+  const { data: libres, error: erreurLibres } = choix.length
+    ? await supabase.from('kiosques').select('numero').in('numero', choix).eq('statut', 'disponible')
+    : { data: [] as { numero: number }[], error: null }
+  if (erreurLibres) return { error: erreurLibres.message }
   const memePersonne = demande.kiosque_courriel === demande.principal_courriel
   const commun = {
     company_name: demande.organisation,
@@ -125,29 +131,38 @@ export async function accepterDemande(id: string, niveau: Exclude<NiveauDemande,
     ].filter(Boolean).join('\n\n') || null,
     status: 'contacted',
     year: 2027,
-    internal_notes: `Créée depuis la demande du site reçue le ${date} (${kiosque ? `kiosque ${kiosque} souhaité` : 'sans préférence de kiosque'}).`,
+    internal_notes: `Créée depuis la demande du site reçue le ${date} (${choix.length ? `${choix.length > 1 ? 'kiosques souhaités' : 'kiosque souhaité'} : ${choix.join(', ')}` : 'sans préférence de kiosque'}).`,
   }
   const table = niveau === 'exposant' ? 'exhibitors' : 'partners'
   const extra = niveau === 'exposant' ? {} : { partner_type: TYPE_PARTENAIRE[niveau] }
   const sansKiosque = niveau === 'soiree' ? 'not_required' : 'to_assign'
 
-  // Le numéro de kiosque est unique par année : s'il est déjà attribué à une
-  // autre fiche, on crée la fiche sans numéro, à attribuer ensuite.
-  let avertissement: string | undefined
-  let creation = await supabase
-    .from(table)
-    .insert({ ...commun, ...extra, booth_number: kiosque ? String(kiosque) : null, booth_status: kiosque ? 'assigned' : sansKiosque })
-    .select('id')
-    .single()
-  if (creation.error?.code === '23505') {
-    avertissement = `Le kiosque ${kiosque} est déjà attribué à une autre fiche : la fiche est créée sans numéro de kiosque.`
-    creation = await supabase
+  const creer = (numero: number | null, statutKiosque: string) =>
+    supabase
       .from(table)
-      .insert({ ...commun, ...extra, booth_number: null, booth_status: 'to_assign' })
+      .insert({ ...commun, ...extra, booth_number: numero === null ? null : String(numero), booth_status: statutKiosque })
       .select('id')
       .single()
+
+  // Le numéro de kiosque est unique par année : un choix déjà attribué à une
+  // autre fiche passe au suivant. S'il n'en reste aucun, la fiche est créée
+  // sans numéro, à attribuer ensuite.
+  let avertissement: string | undefined
+  let creation: Awaited<ReturnType<typeof creer>> | null = null
+  let attribue: number | null = null
+  for (const numero of choix.filter((n) => libres?.some((k) => k.numero === n))) {
+    creation = await creer(numero, 'assigned')
+    if (creation.error?.code === '23505') continue
+    attribue = numero
+    break
   }
-  if (creation.error || !creation.data) return { error: creation.error?.message ?? 'Création de la fiche impossible.' }
+  if (attribue === null) {
+    if (choix.length) avertissement = `Aucun des kiosques demandés (${choix.join(', ')}) n'est libre : la fiche est créée sans numéro de kiosque.`
+    creation = await creer(null, choix.length ? 'to_assign' : sansKiosque)
+  } else if (attribue !== choix[0]) {
+    avertissement = `Le 1er choix n'est plus libre : la fiche indique le kiosque ${attribue}.`
+  }
+  if (!creation || creation.error || !creation.data) return { error: creation?.error?.message ?? 'Création de la fiche impossible.' }
 
   const { error } = await supabase
     .from('demandes_kiosques')

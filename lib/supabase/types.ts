@@ -327,7 +327,9 @@ export type StatutDemande = 'nouvelle' | 'en_traitement' | 'acceptee' | 'refusee
 export type DemandeKiosque = {
   id: string
   created_at: string
-  kiosque_numero: number | null // null : sans préférence
+  kiosque_numero: number | null // 1er choix ; null : sans préférence
+  kiosque_choix_2: number | null
+  kiosque_choix_3: number | null
   niveau: NiveauDemande
   organisation: string
   organisation_adresse: string | null // null : demandes reçues avant V010

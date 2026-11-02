@@ -1,4 +1,4 @@
-import type { NiveauDemande } from '@/lib/supabase/types';
+import type { DemandeKiosque, NiveauDemande } from '@/lib/supabase/types';
 
 // Règles des demandes « Devenir partenaire ou exposant » envoyées depuis le
 // plan des kiosques, partagées par le formulaire (erreurs affichées sous les
@@ -9,6 +9,11 @@ export const NOMBRE_KIOSQUES = 26;
 
 // Valeur du choix « Sans préférence » dans la liste des kiosques
 export const SANS_PREFERENCE = 0;
+
+// Kiosques d'une demande, par ordre de préférence (vide : sans préférence)
+export function choixDemande(d: Pick<DemandeKiosque, 'kiosque_numero' | 'kiosque_choix_2' | 'kiosque_choix_3'>): number[] {
+  return [d.kiosque_numero, d.kiosque_choix_2, d.kiosque_choix_3].filter((n): n is number => n !== null);
+}
 
 export const NIVEAUX: NiveauDemande[] = ['exposant', 'bronze', 'argent', 'or', 'soiree', 'a_determiner'];
 
@@ -35,7 +40,9 @@ export const LIMITES = {
 export const DELAI_MINIMUM_MS = 3000;
 
 export interface DonneesDemande {
-  kiosque: number; // 1 à 26, ou SANS_PREFERENCE
+  kiosque: number; // 1er choix : 1 à 26, ou SANS_PREFERENCE
+  kiosque_2: number | null; // 2e et 3e choix, facultatifs
+  kiosque_3: number | null;
   niveau: NiveauDemande;
   organisation: string;
   organisation_adresse: string;
@@ -68,13 +75,25 @@ function texte(valeur: unknown, multiligne = false): string {
     : sansControle.replace(/\s+/g, ' ').trim();
 }
 
+const choixFacultatif = (valeur: unknown) => (valeur === '' || valeur === null || valeur === undefined ? null : Number(valeur));
+const kiosqueExiste = (n: number) => Number.isInteger(n) && n >= 1 && n <= NOMBRE_KIOSQUES;
+
 export function validerDemande(brut: Record<string, unknown>): { donnees: DonneesDemande; erreurs: ErreursDemande } {
   const erreurs: ErreursDemande = {};
   const kiosque = brut.kiosque === '' || brut.kiosque === null || brut.kiosque === undefined ? NaN : Number(brut.kiosque);
+  // Sans préférence : pas d'autre choix. Un 3e choix sans 2e prend sa place.
+  let kiosque2 = kiosque === SANS_PREFERENCE ? null : choixFacultatif(brut.kiosque_2);
+  let kiosque3 = kiosque === SANS_PREFERENCE ? null : choixFacultatif(brut.kiosque_3);
+  if (kiosque2 === null) {
+    kiosque2 = kiosque3;
+    kiosque3 = null;
+  }
   const niveau = brut.niveau as NiveauDemande;
   const meme = brut.kiosque_meme_contact === true;
   const donnees: DonneesDemande = {
     kiosque,
+    kiosque_2: kiosque2,
+    kiosque_3: kiosque3,
     niveau,
     organisation: texte(brut.organisation),
     organisation_adresse: texte(brut.organisation_adresse),
@@ -99,6 +118,8 @@ export function validerDemande(brut: Record<string, unknown>): { donnees: Donnee
 
   if (Number.isNaN(kiosque)) erreurs.kiosque = 'requis';
   else if (!Number.isInteger(kiosque) || kiosque < SANS_PREFERENCE || kiosque > NOMBRE_KIOSQUES) erreurs.kiosque = 'invalide';
+  if (kiosque2 !== null && (!kiosqueExiste(kiosque2) || kiosque2 === kiosque)) erreurs.kiosque_2 = 'invalide';
+  if (kiosque3 !== null && (!kiosqueExiste(kiosque3) || kiosque3 === kiosque || kiosque3 === kiosque2)) erreurs.kiosque_3 = 'invalide';
   if (!NIVEAUX.includes(niveau)) erreurs.niveau = 'requis';
 
   const longueur = (champ: keyof DonneesDemande, valeur: string, max: number) => {
@@ -144,6 +165,8 @@ const MESSAGES: Record<CodeErreur, { fr: string; en: string }> = {
 const COURRIEL_INVALIDE = { fr: 'Adresse courriel invalide.', en: 'Invalid email address.' };
 const TELEPHONE_INVALIDE = { fr: 'Numéro de téléphone invalide.', en: 'Invalid phone number.' };
 
+const CHOIX_INVALIDE = { fr: 'Choisissez un autre kiosque de la liste.', en: 'Choose a different booth from the list.' };
+
 const MESSAGES_PARTICULIERS: Partial<Record<keyof DonneesDemande, Partial<Record<CodeErreur, { fr: string; en: string }>>>> = {
   principal_courriel: { invalide: COURRIEL_INVALIDE },
   kiosque_courriel: { invalide: COURRIEL_INVALIDE },
@@ -157,6 +180,8 @@ const MESSAGES_PARTICULIERS: Partial<Record<keyof DonneesDemande, Partial<Record
     requis: { fr: 'Choisissez un kiosque, ou « Sans préférence ».', en: 'Choose a booth, or “No preference”.' },
     invalide: { fr: 'Choisissez un kiosque de la liste.', en: 'Choose a booth from the list.' },
   },
+  kiosque_2: { invalide: CHOIX_INVALIDE },
+  kiosque_3: { invalide: CHOIX_INVALIDE },
 };
 
 export function messageErreur(champ: keyof DonneesDemande, code: CodeErreur, fr: boolean): string {

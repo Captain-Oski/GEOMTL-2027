@@ -19,14 +19,16 @@ import type { NiveauDemande } from '@/lib/supabase/types';
 import { cn } from '@/lib/utils';
 
 // Formulaire « Devenir partenaire ou exposant », ouvert depuis les boutons du
-// plan des kiosques. La demande part vers /api/demandes-kiosques ; le kiosque
-// choisi reste affiché disponible tant que le comité n'a pas confirmé la
+// plan des kiosques. La demande part vers /api/demandes-kiosques ; les kiosques
+// choisis restent affichés disponibles tant que le comité n'a pas confirmé la
 // réservation dans l'admin.
 
 type Etat = 'saisie' | 'envoi' | 'recue';
 
 const VIDE = {
-  kiosque: '' as string, // '' : pas encore choisi ; '0' : sans préférence
+  kiosque: '' as string, // 1er choix. '' : pas encore choisi ; '0' : sans préférence
+  kiosque_2: '' as string, // 2e et 3e choix, facultatifs
+  kiosque_3: '' as string,
   niveau: '' as NiveauDemande | '',
   organisation: '',
   organisation_adresse: '',
@@ -62,6 +64,7 @@ export default function ModaleReservation({
   const [erreurs, setErreurs] = useState<ErreursDemande>({});
   const [erreurGenerale, setErreurGenerale] = useState<string | null>(null);
   const [etat, setEtat] = useState<Etat>('saisie');
+  const [retires, setRetires] = useState<number[]>([]); // choix réservés entre-temps
 
   // Valeurs lues à l'ouverture seulement (la liste est recréée à chaque rendu)
   const aLOuverture = useRef({ kiosqueInitial, kiosquesDisponibles });
@@ -78,6 +81,7 @@ export default function ModaleReservation({
       setErreurs({});
       setErreurGenerale(null);
       setEtat('saisie');
+      setRetires([]);
       ouvertA.current = performance.now();
       d.showModal();
       d.scrollTop = 0;
@@ -101,6 +105,18 @@ export default function ModaleReservation({
     setErreurs((e) => ({ ...e, [cle]: undefined }));
   };
 
+  // Sans préférence : le 2e et le 3e choix n'ont plus lieu d'être
+  const changerKiosque = (cle: 'kiosque' | 'kiosque_2' | 'kiosque_3', valeur: string) => {
+    setChamps((c) => ({ ...c, [cle]: valeur, ...(cle === 'kiosque' && valeur === String(SANS_PREFERENCE) ? { kiosque_2: '', kiosque_3: '' } : {}) }));
+    setErreurs((e) => ({ ...e, kiosque: undefined, kiosque_2: undefined, kiosque_3: undefined }));
+  };
+
+  // Un kiosque déjà pris dans un autre choix n'est pas proposé
+  const optionsKiosque = (autres: string[]) =>
+    kiosquesDisponibles
+      .filter((n) => !autres.includes(String(n)))
+      .map((n) => <option key={n} value={n}>{fr ? `Kiosque ${n}` : `Booth ${n}`}</option>);
+
   const envoyer = async (e: React.FormEvent) => {
     e.preventDefault();
     setErreurGenerale(null);
@@ -120,11 +136,12 @@ export default function ModaleReservation({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...donnees, kiosque: Number(champs.kiosque), site_web: piege, duree_ms: Math.round(performance.now() - ouvertA.current) }),
       });
+      const corps = await retour.json().catch(() => ({}));
       if (retour.ok) {
+        setRetires(Array.isArray(corps.retires) ? corps.retires : []);
         setEtat('recue');
         return;
       }
-      const corps = await retour.json().catch(() => ({}));
       setEtat('saisie');
       if (corps.erreurs) setErreurs(corps.erreurs as ErreursDemande);
       setErreurGenerale(messageServeur(retour.status, corps.erreur, fr));
@@ -195,8 +212,8 @@ export default function ModaleReservation({
           </h2>
           <p className="mt-0.5 text-sm text-geo-ink-soft">
             {fr
-              ? 'Choisissez votre niveau et votre kiosque : le comité vous confirme la réservation après avoir reçu votre demande.'
-              : 'Choose your level and your booth: the committee confirms the booking after receiving your request.'}
+              ? 'Choisissez votre niveau et jusqu\'à trois kiosques : le comité vous confirme la réservation après avoir reçu votre demande.'
+              : 'Choose your level and up to three booths: the committee confirms the booking after receiving your request.'}
           </p>
         </div>
         <button
@@ -215,9 +232,16 @@ export default function ModaleReservation({
           <p className="text-lg font-semibold">{fr ? 'Demande reçue, merci !' : 'Request received, thank you!'}</p>
           <p className="mx-auto mt-2 max-w-md text-sm text-geo-ink-soft">
             {fr
-              ? 'Le comité étudie votre demande et vous répond sous peu. Un accusé de réception est envoyé à votre courriel. Le kiosque choisi reste affiché disponible jusqu\'à ce que la réservation soit confirmée.'
-              : 'The committee is reviewing your request and will get back to you shortly. A confirmation is sent to your email. The chosen booth stays shown as available until the booking is confirmed.'}
+              ? 'Le comité étudie votre demande et vous répond sous peu. Un accusé de réception est envoyé à votre courriel. Les kiosques choisis restent affichés disponibles jusqu\'à ce que la réservation soit confirmée.'
+              : 'The committee is reviewing your request and will get back to you shortly. A confirmation is sent to your email. The chosen booths stay shown as available until the booking is confirmed.'}
           </p>
+          {retires.length > 0 && (
+            <p className="mx-auto mt-3 max-w-md text-sm font-medium text-geo-ink">
+              {fr
+                ? `${retires.length > 1 ? 'Les kiosques' : 'Le kiosque'} ${retires.join(', ')} ${retires.length > 1 ? 'venaient d\'être réservés et ont été retirés' : 'venait d\'être réservé et a été retiré'} de votre demande.`
+                : `Booth${retires.length > 1 ? 's' : ''} ${retires.join(', ')} had just been booked and ${retires.length > 1 ? 'were' : 'was'} removed from your request.`}
+            </p>
+          )}
           <button
             type="button"
             onClick={() => dialogue.current?.close()}
@@ -234,7 +258,7 @@ export default function ModaleReservation({
             </p>
           )}
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="sm:w-1/2 sm:pr-1.5">
             <div>
               <label htmlFor="reservation-niveau" className={etiquette}>{fr ? 'Niveau souhaité' : 'Desired level'}</label>
               <select {...proprietes('niveau')} value={champs.niveau} onChange={(e) => changer('niveau', e.target.value as NiveauDemande)} className={champ}>
@@ -245,21 +269,51 @@ export default function ModaleReservation({
               </select>
               {erreur('niveau')}
             </div>
-            <div>
-              <label htmlFor="reservation-kiosque" className={etiquette}>{fr ? 'Kiosque souhaité' : 'Desired booth'}</label>
-              <select {...proprietes('kiosque')} value={champs.kiosque} onChange={(e) => changer('kiosque', e.target.value)} className={champ}>
-                <option value="">{fr ? 'Choisir…' : 'Choose…'}</option>
-                <option value={String(SANS_PREFERENCE)}>{fr ? 'Sans préférence' : 'No preference'}</option>
-                {kiosquesDisponibles.map((n) => (
-                  <option key={n} value={n}>{fr ? `Kiosque ${n}` : `Booth ${n}`}</option>
-                ))}
-              </select>
-              {erreur('kiosque')}
-              <p className="mt-1 text-xs text-geo-ink-soft">
-                {fr ? `${kiosquesDisponibles.length} kiosques disponibles, numérotés comme sur le plan.` : `${kiosquesDisponibles.length} booths available, numbered as on the plan.`}
-              </p>
-            </div>
           </div>
+
+          <fieldset className={groupe}>
+            <legend className={legende}>{fr ? 'Kiosques souhaités' : 'Desired booths'}</legend>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <label htmlFor="reservation-kiosque" className={etiquette}>{fr ? '1er choix' : '1st choice'}</label>
+                <select {...proprietes('kiosque')} value={champs.kiosque} onChange={(e) => changerKiosque('kiosque', e.target.value)} className={champ}>
+                  <option value="">{fr ? 'Choisir…' : 'Choose…'}</option>
+                  <option value={String(SANS_PREFERENCE)}>{fr ? 'Sans préférence' : 'No preference'}</option>
+                  {optionsKiosque([champs.kiosque_2, champs.kiosque_3])}
+                </select>
+                {erreur('kiosque')}
+              </div>
+              {champs.kiosque !== String(SANS_PREFERENCE) && kiosquesDisponibles.length >= 2 && (
+                <div>
+                  <label htmlFor="reservation-kiosque_2" className={etiquette}>
+                    {fr ? '2e choix' : '2nd choice'} <span className="font-normal text-geo-ink-soft">{fr ? '(facultatif)' : '(optional)'}</span>
+                  </label>
+                  <select {...proprietes('kiosque_2')} value={champs.kiosque_2} onChange={(e) => changerKiosque('kiosque_2', e.target.value)} className={champ}>
+                    <option value="">{fr ? 'Aucun' : 'None'}</option>
+                    {optionsKiosque([champs.kiosque, champs.kiosque_3])}
+                  </select>
+                  {erreur('kiosque_2')}
+                </div>
+              )}
+              {champs.kiosque !== String(SANS_PREFERENCE) && kiosquesDisponibles.length >= 3 && (
+                <div>
+                  <label htmlFor="reservation-kiosque_3" className={etiquette}>
+                    {fr ? '3e choix' : '3rd choice'} <span className="font-normal text-geo-ink-soft">{fr ? '(facultatif)' : '(optional)'}</span>
+                  </label>
+                  <select {...proprietes('kiosque_3')} value={champs.kiosque_3} onChange={(e) => changerKiosque('kiosque_3', e.target.value)} className={champ}>
+                    <option value="">{fr ? 'Aucun' : 'None'}</option>
+                    {optionsKiosque([champs.kiosque, champs.kiosque_2])}
+                  </select>
+                  {erreur('kiosque_3')}
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-geo-ink-soft">
+              {fr
+                ? `Un kiosque peut être réservé entre-temps : indiquer d'autres choix nous évite de vous réécrire. ${kiosquesDisponibles.length} kiosques disponibles, numérotés comme sur le plan.`
+                : `A booth may be booked in the meantime: listing other choices saves another round of emails. ${kiosquesDisponibles.length} booths available, numbered as on the plan.`}
+            </p>
+          </fieldset>
 
           <fieldset className={groupe}>
             <legend className={legende}>{fr ? 'Organisation' : 'Organization'}</legend>
@@ -356,7 +410,7 @@ export default function ModaleReservation({
 
 function messageServeur(status: number, code: string | undefined, fr: boolean) {
   const courriel = EVENT_CONFIG.courriels.partenariat;
-  if (status === 409) return fr ? 'Ce kiosque vient d\'être réservé. Choisissez-en un autre.' : 'This booth has just been booked. Please choose another one.';
+  if (status === 409) return fr ? 'Les kiosques choisis viennent d\'être réservés. Choisissez-en d\'autres.' : 'The chosen booths have just been booked. Please choose others.';
   if (status === 429) return fr ? 'Trop de demandes envoyées. Réessayez plus tard ou écrivez-nous.' : 'Too many requests sent. Please try again later or email us.';
   if (status === 400 && code === 'validation') return fr ? 'Vérifiez les champs indiqués.' : 'Please check the highlighted fields.';
   if (status === 400 && code === 'trop_rapide') return fr ? 'Envoi trop rapide. Patientez quelques secondes, puis réessayez.' : 'Sent too quickly. Wait a few seconds, then try again.';

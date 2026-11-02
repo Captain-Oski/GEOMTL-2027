@@ -87,20 +87,26 @@ export async function POST(request: NextRequest) {
     return reponse(429, { erreur: 'trop_de_demandes' });
   }
 
-  // 7. Kiosque choisi déjà réservé par le comité
-  const kiosqueChoisi = donnees.kiosque === SANS_PREFERENCE ? null : donnees.kiosque;
-  if (kiosqueChoisi !== null) {
-    const { data: kiosque, error: erreurKiosque } = await supabase.from('kiosques').select('statut').eq('numero', kiosqueChoisi).single();
-    if (erreurKiosque || !kiosque) {
-      console.error('[demandes-kiosques] kiosque', erreurKiosque?.message);
+  // 7. Choix déjà réservés par le comité : retirés de la demande, qui n'est
+  // refusée que s'il ne reste aucun des kiosques choisis
+  const demandes = [donnees.kiosque, donnees.kiosque_2, donnees.kiosque_3].filter((n): n is number => n !== null && n !== SANS_PREFERENCE);
+  let choix = demandes;
+  if (demandes.length > 0) {
+    const { data: kiosques, error: erreurKiosques } = await supabase.from('kiosques').select('numero, statut').in('numero', demandes);
+    if (erreurKiosques || !kiosques || kiosques.length !== demandes.length) {
+      console.error('[demandes-kiosques] kiosques', erreurKiosques?.message);
       return reponse(503, { erreur: 'service_indisponible' });
     }
-    if (kiosque.statut === 'reserve') return reponse(409, { erreur: 'kiosque_reserve' });
+    const reserves = kiosques.filter((k) => k.statut === 'reserve').map((k) => k.numero);
+    choix = demandes.filter((n) => !reserves.includes(n));
+    if (choix.length === 0) return reponse(409, { erreur: 'kiosque_reserve' });
   }
 
   // 8. Enregistrement
   const { error: erreurInsertion } = await supabase.from('demandes_kiosques').insert({
-    kiosque_numero: kiosqueChoisi,
+    kiosque_numero: choix[0] ?? null,
+    kiosque_choix_2: choix[1] ?? null,
+    kiosque_choix_3: choix[2] ?? null,
     niveau: donnees.niveau,
     organisation: donnees.organisation,
     organisation_adresse: donnees.organisation_adresse,
@@ -122,9 +128,9 @@ export async function POST(request: NextRequest) {
   }
 
   // 9. Courriels : un échec est consigné, la demande reste enregistrée
-  await envoyerCourriels(donnees, origine);
+  await envoyerCourriels(donnees, choix, origine);
 
-  return reponse(201, { ok: true });
+  return reponse(201, { ok: true, retires: demandes.filter((n) => !choix.includes(n)) });
 }
 
 // ─── Courriels (Gmail du compte Google Workspace) ─────────
@@ -151,7 +157,7 @@ function transporteurGmail() {
 // Le nom d'organisation va dans le sujet : aucun saut de ligne dans un en-tête
 const enLigne = (texte: string) => texte.replace(/[\r\n]+/g, ' ').trim();
 
-async function envoyerCourriels(d: DonneesDemande, origine: string) {
+async function envoyerCourriels(d: DonneesDemande, choix: number[], origine: string) {
   const smtp = transporteurGmail();
   if (!smtp) {
     console.warn('[demandes-kiosques] GMAIL_UTILISATEUR ou GMAIL_MOT_DE_PASSE absent : aucun courriel envoyé.');
@@ -161,9 +167,11 @@ async function envoyerCourriels(d: DonneesDemande, origine: string) {
   const comite = EVENT_CONFIG.courriels.partenariat;
   const niveau = LIBELLES_NIVEAUX[d.niveau].fr;
   const fr = d.langue === 'fr';
-  const sansPreference = d.kiosque === SANS_PREFERENCE;
-  const kiosqueFr = sansPreference ? 'sans préférence' : `kiosque ${d.kiosque}`;
-  const kiosqueEn = sansPreference ? 'no booth preference' : `booth ${d.kiosque}`;
+  const sansPreference = choix.length === 0;
+  const plusieurs = choix.length > 1;
+  const liste = choix.join(', ');
+  const kiosqueFr = sansPreference ? 'sans préférence' : `${plusieurs ? 'kiosques' : 'kiosque'} ${liste}`;
+  const kiosqueEn = sansPreference ? 'no booth preference' : `${plusieurs ? 'booths' : 'booth'} ${liste}`;
   // Le responsable du kiosque sur place reçoit aussi l'accusé de réception s'il est différent
   const copie = !d.kiosque_meme_contact && d.kiosque_courriel !== d.principal_courriel ? [d.kiosque_courriel] : undefined;
 
@@ -180,7 +188,7 @@ async function envoyerCourriels(d: DonneesDemande, origine: string) {
         `Adresse : ${d.organisation_adresse}`,
         `Téléphone de l'organisation : ${d.organisation_telephone}`,
         `Niveau souhaité : ${niveau}`,
-        `Kiosque souhaité : ${sansPreference ? 'sans préférence' : d.kiosque}`,
+        sansPreference ? 'Kiosque souhaité : sans préférence' : plusieurs ? `Kiosques souhaités, par ordre de préférence : ${liste}` : `Kiosque souhaité : ${liste}`,
         `Langue : ${fr ? 'français' : 'anglais'}`,
         '',
         'Responsable de la facturation :',
@@ -192,7 +200,7 @@ async function envoyerCourriels(d: DonneesDemande, origine: string) {
         d.message || '(aucun)',
         '',
         `Traiter la demande : ${origine}/admin/organisations?onglet=demandes`,
-        'Le kiosque reste affiché disponible jusqu\'à ce que le comité confirme la réservation dans l\'admin.',
+        'Les kiosques restent affichés disponibles jusqu\'à ce que le comité confirme la réservation dans l\'admin.',
       ].join('\n'),
     }),
     smtp.sendMail({
@@ -205,7 +213,7 @@ async function envoyerCourriels(d: DonneesDemande, origine: string) {
         ? [
             `Bonjour ${d.principal_nom},`,
             '',
-            `Nous avons bien reçu la demande de ${d.organisation} (${niveau}, ${kiosqueFr}).`,
+            `Nous avons bien reçu la demande de ${d.organisation} (${niveau}, ${kiosqueFr}${plusieurs ? ', par ordre de préférence' : ''}).`,
             'Le comité vous répond sous peu. La réservation d\'un kiosque n\'est confirmée qu\'après la réponse du comité.',
             '',
             `Pour toute question : ${comite}`,
@@ -215,7 +223,7 @@ async function envoyerCourriels(d: DonneesDemande, origine: string) {
         : [
             `Hello ${d.principal_nom},`,
             '',
-            `We have received the request from ${d.organisation} (${LIBELLES_NIVEAUX[d.niveau].en}, ${kiosqueEn}).`,
+            `We have received the request from ${d.organisation} (${LIBELLES_NIVEAUX[d.niveau].en}, ${kiosqueEn}${plusieurs ? ', in order of preference' : ''}).`,
             'The committee will get back to you shortly. A booth booking is only confirmed once the committee replies.',
             '',
             `Questions: ${comite}`,
