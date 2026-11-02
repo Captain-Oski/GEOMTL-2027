@@ -6,6 +6,7 @@ import { EDITIONS, FLICKR_ALBUMS_URL } from '@/data/galerie';
 import { ArrowSquareOut } from '@phosphor-icons/react/dist/ssr/ArrowSquareOut';
 import { Camera } from '@phosphor-icons/react/dist/ssr/Camera';
 import { cn } from '@/lib/utils';
+import { alternatesPage } from '@/lib/seo';
 
 export function generateStaticParams() {
   return [{ locale: 'fr' }, { locale: 'en' }];
@@ -18,7 +19,7 @@ export async function generateMetadata(props: { params: Promise<{ locale: string
     locale
   } = params;
 
-  return { title: locale === 'fr' ? 'Galerie' : 'Gallery' };
+  return { title: locale === 'fr' ? 'Galerie' : 'Gallery', alternates: alternatesPage(locale, '/galerie') };
 }
 
 export default async function GaleriePage(props: { params: Promise<{ locale: string }> }) {

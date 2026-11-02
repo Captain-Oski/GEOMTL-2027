@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { URL_SITE } from '@/lib/site'
 import type { Role } from '@/lib/supabase/types'
 
 const MOCK_MSG = 'Supabase non configuré - modifications non persistées en mode mock.'
@@ -20,7 +21,7 @@ export async function inviteUser(email: string): Promise<{ error?: string }> {
   try {
     const adminClient = createAdminClient()
     const { error } = await adminClient.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'}/auth/callback`,
+      redirectTo: `${process.env.NODE_ENV === 'production' ? URL_SITE : 'http://localhost:3000'}/auth/callback`,
     })
     if (error) return { error: error.message }
   } catch {

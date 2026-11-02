@@ -4,7 +4,8 @@ import { join } from 'node:path';
 import GeoMTLLogo from '@/components/ui/GeoMTLLogo';
 
 // Aperçu des partages (LinkedIn, courriels, messageries) : logo sur la trame
-// dégradée des en-têtes de page. Générée à la compilation, une par langue.
+// dégradée des en-têtes de page. Une par langue ; le fichier de fond est inclus
+// dans la fonction par outputFileTracingIncludes (next.config.mjs).
 
 export const alt = 'GÉOMTL 2027';
 export const size = { width: 1200, height: 630 };

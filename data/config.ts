@@ -1,6 +1,8 @@
 export const EVENT_CONFIG = {
   name: "GÉOMTL 2027",
   dates: { fr: "3–5 octobre 2027", en: "October 3–5, 2027" },
+  // Dates des forfaits en vente (billetterie et Le Point de Vente), pour les données structurées
+  datesEvenement: { debut: "2027-10-04", fin: "2027-10-05" },
   venue: { fr: "Centre de congrès de Saint-Hyacinthe", en: "Centre de congrès de Saint-Hyacinthe" },
   city: "Saint-Hyacinthe, QC",
   stats: { participants: 400, days: 2, speakers: 60, workshops: 20, exhibitors: 26, awards: 1 },
@@ -24,6 +26,17 @@ export const EVENT_CONFIG = {
   ticketUrl: {
     fr: "https://lepointdevente.com/billets/l0z261010001?lang=fr",
     en: "https://lepointdevente.com/tickets/l0z261010001?lang=en"
+  },
+  // Tarifs validés par le comité (JD, octobre 2026). Le forfait 2 jours est le seul
+  // à avoir un tarif anticipé (jusqu'au 15 août 2027) et un tarif régulier.
+  tarifs: {
+    deuxJours: 795,
+    deuxJoursRegulier: 895,
+    jour4: 495,
+    jour5: 400,
+    etudiant: 95,
+    finTarifAnticipe: "2027-08-15",
+    debutTarifRegulier: "2027-08-16"
   },
   partnerUrl: "#devenir-partenaire",
   email: "info@geomtl.com",

@@ -3,6 +3,8 @@ import Hero from '@/components/home/Hero';
 import Stats from '@/components/home/Stats';
 import WhyAttend from '@/components/home/WhyAttend';
 import HomeCTA from './HomeCTA';
+import DonneesEvenement from '@/components/seo/DonneesEvenement';
+import { alternatesPage } from '@/lib/seo';
 
 // Themes.tsx reste hors de la page tant que les thématiques 2027 ne sont pas
 // définies par l'équipe.
@@ -24,12 +26,16 @@ export async function generateMetadata(props: { params: Promise<{ locale: string
     description: fr
       ? 'La conférence géospatiale de référence du Québec. 3–5 octobre 2027, Centre de congrès de Saint-Hyacinthe.'
       : "Quebec's reference geospatial conference. October 3–5, 2027, Centre de congrès de Saint-Hyacinthe.",
+    alternates: alternatesPage(locale),
   };
 }
 
-export default function HomePage() {
+export default async function HomePage(props: { params: Promise<{ locale: string }> }) {
+  const { locale } = await props.params;
+
   return (
     <>
+      <DonneesEvenement locale={locale} />
       <Hero />
       <Stats />
       <WhyAttend />

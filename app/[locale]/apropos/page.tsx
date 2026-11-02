@@ -10,6 +10,7 @@ import { Binoculars } from '@phosphor-icons/react/dist/ssr/Binoculars';
 import { UsersThree } from '@phosphor-icons/react/dist/ssr/UsersThree';
 import { Trophy } from '@phosphor-icons/react/dist/ssr/Trophy';
 import { ArrowRight } from '@phosphor-icons/react/dist/ssr/ArrowRight';
+import { alternatesPage } from '@/lib/seo';
 
 // Mission, vision, prix GAÏA et histoire sont masqués à la demande du comité :
 // la page n'affiche que l'équipe et « Nous joindre ». Passer à true pour les
@@ -23,7 +24,7 @@ export async function generateMetadata(props: { params: Promise<{ locale: string
     locale
   } = params;
 
-  return { title: locale === 'fr' ? 'À propos' : 'About' };
+  return { title: locale === 'fr' ? 'À propos' : 'About', alternates: alternatesPage(locale, '/apropos') };
 }
 
 export function generateStaticParams() {

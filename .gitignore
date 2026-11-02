@@ -20,3 +20,9 @@ __pycache__/
 
 # Exports d'images générés localement
 exports/
+
+# Documents internes du comité : jamais dans le dépôt, il est public
+/GeoMTL-2027-*.pdf
+
+# Réglages locaux de Claude Code
+.claude/settings.local.json

@@ -5,6 +5,7 @@ import type { Metadata } from 'next';
 import { Check } from '@phosphor-icons/react/dist/ssr/Check';
 import NotesBillets from '@/components/billetterie/NotesBillets';
 import { EVENT_CONFIG } from '@/data/config';
+import { alternatesPage } from '@/lib/seo';
 
 export async function generateMetadata(props: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const params = await props.params;
@@ -13,7 +14,7 @@ export async function generateMetadata(props: { params: Promise<{ locale: string
     locale
   } = params;
 
-  return { title: locale === 'fr' ? 'Billetterie' : 'Tickets' };
+  return { title: locale === 'fr' ? 'Billetterie' : 'Tickets', alternates: alternatesPage(locale, '/billetterie') };
 }
 
 export function generateStaticParams() {
@@ -44,8 +45,8 @@ export default async function BilletteriePage(
       id: 'deux-jours',
       nom: fr ? 'Forfait 2 jours' : '2-day package',
       detail: fr ? '4 et 5 octobre 2027' : 'October 4 and 5, 2027',
-      prix: 795,
-      regulier: 895,
+      prix: EVENT_CONFIG.tarifs.deuxJours,
+      regulier: EVENT_CONFIG.tarifs.deuxJoursRegulier,
       inclus: fr ? [
         'Conférences, vitrines technologiques et ateliers',
         'Salon des exposants',
@@ -62,7 +63,7 @@ export default async function BilletteriePage(
       id: 'jour-4',
       nom: fr ? 'Forfait 1 jour' : '1-day package',
       detail: fr ? 'Lundi 4 octobre 2027' : 'Monday, October 4, 2027',
-      prix: 495,
+      prix: EVENT_CONFIG.tarifs.jour4,
       inclus: fr ? [
         'Conférences, vitrines technologiques et ateliers',
         'Salon des exposants',
@@ -79,7 +80,7 @@ export default async function BilletteriePage(
       id: 'jour-5',
       nom: fr ? 'Forfait 1 jour' : '1-day package',
       detail: fr ? 'Mardi 5 octobre 2027' : 'Tuesday, October 5, 2027',
-      prix: 400,
+      prix: EVENT_CONFIG.tarifs.jour5,
       inclus: fr ? [
         'Conférences, vitrines technologiques et ateliers',
         'Salon des exposants',
@@ -94,7 +95,7 @@ export default async function BilletteriePage(
       id: 'etudiant',
       nom: fr ? 'Forfait Étudiant' : 'Student package',
       detail: fr ? 'Étudiants inscrits à temps plein' : 'Full-time students',
-      prix: 95,
+      prix: EVENT_CONFIG.tarifs.etudiant,
       inclus: fr ? [
         'Conférences, vitrines technologiques et ateliers',
         'Salon des exposants'

@@ -1,6 +1,6 @@
-# GeoMTL 2027 - TODO : Production Ready
+# GÉOMTL 2027 - TODO
 
-Liste des tâches à compléter avant la mise en ligne. Organisée par priorité.
+Le site est en ligne sur [www.geomtl.com](https://www.geomtl.com) depuis octobre 2026. Tâches restantes, par priorité.
 
 ---
 
@@ -21,8 +21,8 @@ Liste des tâches à compléter avant la mise en ligne. Organisée par priorité
 
 ### Déploiement
 - [x] Connecter le repo GitHub à Vercel
-- [x] Configurer `NEXT_PUBLIC_SITE_URL` en production (nécessaire pour les emails d'invitation)
-- [x] Configurer le domaine personnalisé (ex. `geomtl.com`)
+- [x] Fixer l'adresse publique du site (`lib/site.ts`)
+- [x] Configurer le domaine personnalisé (`www.geomtl.com`, `geomtl.com` y redirige)
 - [x] Vérifier que le build passe sans erreur (`npm run build`)
 - [x] Tester l'auth en production (redirect URI Supabase à jour)
 
@@ -35,6 +35,10 @@ Liste des tâches à compléter avant la mise en ligne. Organisée par priorité
 - [ ] Collecter et téléverser les vrais logos (voir section Stockage)
 - [ ] Vérifier toutes les URLs de sites web
 
+### Infolettre
+- [x] Page d'inscription reliée à Mailchimp (voir docs/infolettre.md)
+- [ ] Authentifier le domaine `geomtl.com` dans Mailchimp avant le premier envoi
+
 ### Stockage des logos (Supabase Storage)
 - [ ] Créer un bucket `logos` dans Supabase Storage (accès public en lecture)
 - [ ] Configurer les politiques RLS du bucket (upload réservé aux editor/admin)
@@ -46,7 +50,11 @@ Liste des tâches à compléter avant la mise en ligne. Organisée par priorité
 - [ ] Vérifier et compléter `messages/fr.json`
 
 ### SEO & Métadonnées
-- [ ] Ajouter `metadata` (title, description) dans chaque page publique ; l'image de partage est commune (`app/[locale]/opengraph-image.tsx`)
+- [x] Titres, balises canoniques et liens FR/EN sur chaque page publique ; pages en attente exclues de Google (voir docs/referencement.md)
+- [x] Données structurées de l'événement et image de partage (`app/[locale]/opengraph-image.tsx`)
+- [ ] Rédiger une description propre à chaque page publique (l'accueil et l'infolettre en ont une, les autres reprennent celle du site)
+- [ ] Inscrire le site dans Google Search Console et Bing Webmaster Tools, puis soumettre le plan du site
+- [ ] Demander à l'ACSG, sur LinkedIn et aux partenaires de pointer vers `https://www.geomtl.com`
 - [x] Favicon et icônes d'application (`app/favicon.ico`, `app/icon.svg`, `app/apple-icon.png`)
 - [x] `robots.txt` et `sitemap.xml` (`app/robots.ts`, `app/sitemap.ts`)
 
@@ -99,7 +107,7 @@ Les liens de ces modules ont été retirés du menu tant que les pages n'existen
 
 ## ✅ Complété
 
-- [x] Authentification Google OAuth avec rôles (admin/editor/viewer)
+- [x] Authentification par courriel et mot de passe, avec rôles (admin/editor/viewer)
 - [x] Module partenaires complet (CRUD + dashboard + filtres + formulaire)
 - [x] Module exposants complet (CRUD + dashboard + filtres + formulaire)
 - [x] Migrations SQL numérotées (V001–V005) avec CHANGELOG

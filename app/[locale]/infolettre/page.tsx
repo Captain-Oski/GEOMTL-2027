@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { setRequestLocale } from 'next-intl/server';
 import { EVENT_CONFIG } from '@/data/config';
 import { formulaireMailchimp } from '@/lib/infolettre';
+import { alternatesPage } from '@/lib/seo';
 import FormulaireInfolettre from '@/components/infolettre/FormulaireInfolettre';
 import BoutonInfolettre from '@/components/ui/BoutonInfolettre';
 
@@ -15,6 +16,7 @@ export async function generateMetadata(props: { params: Promise<{ locale: string
     description: fr
       ? 'Abonnez-vous à l\'infolettre de GÉOMTL 2027 : programme, conférenciers, billetterie et nouvelles de l\'événement.'
       : 'Subscribe to the GÉOMTL 2027 newsletter: program, speakers, tickets and event news.',
+    alternates: alternatesPage(locale, '/infolettre'),
   };
 }
 

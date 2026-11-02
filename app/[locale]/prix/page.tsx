@@ -3,6 +3,7 @@ import Container from '@/components/ui/Container';
 import SectionTitle from '@/components/ui/SectionTitle';
 import { Trophy } from '@phosphor-icons/react/dist/ssr/Trophy';
 import type { Metadata } from 'next';
+import { alternatesPage } from '@/lib/seo';
 
 export async function generateMetadata(props: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const params = await props.params;
@@ -11,7 +12,7 @@ export async function generateMetadata(props: { params: Promise<{ locale: string
     locale
   } = params;
 
-  return { title: locale === 'fr' ? 'Prix GAÏA' : 'GAÏA Prize' };
+  return { title: locale === 'fr' ? 'Prix GAÏA' : 'GAÏA Prize', alternates: alternatesPage(locale, '/prix') };
 }
 
 export function generateStaticParams() {

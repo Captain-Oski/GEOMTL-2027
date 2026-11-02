@@ -1,6 +1,7 @@
 import { setRequestLocale } from 'next-intl/server';
 import Container from '@/components/ui/Container';
 import type { Metadata } from 'next';
+import { alternatesPage } from '@/lib/seo';
 
 export async function generateMetadata(props: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const params = await props.params;
@@ -9,7 +10,7 @@ export async function generateMetadata(props: { params: Promise<{ locale: string
     locale
   } = params;
 
-  return { title: locale === 'fr' ? 'Politique de confidentialité' : 'Privacy Policy' };
+  return { title: locale === 'fr' ? 'Politique de confidentialité' : 'Privacy Policy', alternates: alternatesPage(locale, '/confidentialite') };
 }
 
 export function generateStaticParams() {
