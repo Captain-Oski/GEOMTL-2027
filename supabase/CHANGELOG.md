@@ -27,6 +27,8 @@ Toutes les migrations sont dans [`supabase/migrations/`](./migrations/).
 | V007 | [V007__kiosques.sql](./migrations/V007__kiosques.sql) | Tables `kiosques` (26 emplacements, état public décidé par le comité) et `demandes_kiosques` (formulaire public) · RLS sans accès anon | 2026-10-22 | ✅ |
 | V008 | [V008__types_partenaires.sql](./migrations/V008__types_partenaires.sql) | Types de partenaire : Or, Argent, Bronze, Soirée réseautage (`Networking`) · niveau `soiree` dans les demandes du site | 2026-10-23 | ✅ |
 | V009 | [V009__durcissement_securite.sql](./migrations/V009__durcissement_securite.sql) | `search_path` fixe sur `get_my_role`, `handle_new_user` et `set_updated_at` · `handle_new_user` retirée de l'API · choix documentés (vues publiques, `get_my_role`) | 2026-10-23 | ✅ |
+| V010 | [V010__adresse_telephone_organisation.sql](./migrations/V010__adresse_telephone_organisation.sql) | Adresse civique et téléphone de l'organisation : demandes, partenaires et exposants | 2026-10-26 | ✅ |
+| V011 | [V011__droits_lecture_seule.sql](./migrations/V011__droits_lecture_seule.sql) | Lecture seule avec la clé publique : vues publiques de GÉOMTL et tables géospatiales du schéma `public` | 2026-11-02 | ✅ |
 
 ---
 
