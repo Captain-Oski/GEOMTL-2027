@@ -3,25 +3,26 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { exigerAdmin } from '@/lib/auth/droits'
 import { URL_SITE } from '@/lib/site'
 import type { Role } from '@/lib/supabase/types'
 
 const MOCK_MSG = 'Supabase non configuré - modifications non persistées en mode mock.'
 
 // ─── Inviter un utilisateur par courriel ──────────────────
-// Supabase envoie un email avec un lien magique.
-// L'utilisateur clique le lien → /auth/callback → session créée.
+// Supabase envoie un courriel : le lien mène à /auth/confirm, où la personne
+// choisit son mot de passe. Un admin lui attribue ensuite un rôle.
 
 export async function inviteUser(email: string): Promise<{ error?: string }> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return { error: MOCK_MSG }
 
-  const check = await assertAdmin()
+  const check = await exigerAdmin()
   if (check.error) return check
 
   try {
     const adminClient = createAdminClient()
     const { error } = await adminClient.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${process.env.NODE_ENV === 'production' ? URL_SITE : 'http://localhost:3000'}/auth/callback`,
+      redirectTo: `${process.env.NODE_ENV === 'production' ? URL_SITE : 'http://localhost:3000'}/auth/confirm`,
     })
     if (error) return { error: error.message }
   } catch {
@@ -43,7 +44,7 @@ export async function createUser(
 ): Promise<{ error?: string }> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return { error: MOCK_MSG }
 
-  const check = await assertAdmin()
+  const check = await exigerAdmin()
   if (check.error) return check
 
   if (password.length < 8) return { error: 'Le mot de passe doit contenir au moins 8 caractères.' }
@@ -76,24 +77,6 @@ export async function createUser(
   return {}
 }
 
-// ─── Vérification que l'appelant est admin ─────────────────
-// Chaque action re-vérifie indépendamment - ne pas faire confiance au client.
-
-async function assertAdmin(): Promise<{ error?: string }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Non authentifié.' }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.role !== 'admin') return { error: 'Accès refusé - rôle admin requis.' }
-  return {}
-}
-
 // ─── Modifier le rôle d'un utilisateur ────────────────────
 
 export async function updateUserRole(
@@ -110,7 +93,7 @@ export async function updateUserRole(
     return { error: 'Vous ne pouvez pas modifier votre propre rôle.' }
   }
 
-  const check = await assertAdmin()
+  const check = await exigerAdmin()
   if (check.error) return check
 
   const { error } = await supabase
@@ -144,7 +127,7 @@ export async function deleteUser(targetId: string): Promise<{ error?: string }> 
     return { error: 'Vous ne pouvez pas supprimer votre propre compte.' }
   }
 
-  const check = await assertAdmin()
+  const check = await exigerAdmin()
   if (check.error) return check
 
   try {

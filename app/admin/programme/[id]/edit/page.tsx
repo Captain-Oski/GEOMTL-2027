@@ -1,4 +1,5 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
+import { peutEditer, sessionCourante } from '@/lib/auth/droits'
 import { getSessionById } from '@/lib/data/programme'
 import { SessionForm } from '@/components/admin/programme/SessionForm'
 import Link from 'next/link'
@@ -13,6 +14,9 @@ export default async function EditSessionPage(
   }
 ) {
   const params = await props.params;
+  const { role } = await sessionCourante()
+  if (!peutEditer(role)) redirect('/admin/programme')
+
   const session = await getSessionById(params.id)
   if (!session) notFound()
 

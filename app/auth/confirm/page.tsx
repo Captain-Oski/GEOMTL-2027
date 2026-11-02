@@ -6,8 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 
 // Gère les liens envoyés par Supabase par courriel :
 //   - type=recovery  → formulaire de nouveau mot de passe
+//   - type=invite    → formulaire du premier mot de passe
 //   - type=signup    → confirmation de compte, redirect vers /admin
-//   - type=invite    → même chose qu'un signup
 //
 // Supabase envoie le token dans le hash (#) - non lisible côté serveur.
 // Cette page est donc un Client Component.
@@ -36,6 +36,7 @@ export default function AuthConfirmPage() {
 
     if (!accessToken || !refreshToken) {
       setFlowType('unknown')
+      setError('Lien invalide ou expiré. Demandez un nouveau lien.')
       return
     }
 
@@ -49,8 +50,8 @@ export default function AuthConfirmPage() {
           return
         }
         setReady(true)
-        // Pour signup/invite : rediriger directement vers l'admin
-        if (type !== 'recovery') {
+        // Un mot de passe est à choisir pour recovery et invite ; sinon, vers l'admin
+        if (type !== 'recovery' && type !== 'invite') {
           router.replace('/admin')
         }
       })
@@ -99,12 +100,12 @@ export default function AuthConfirmPage() {
   }
 
   // ── Formulaire nouveau mot de passe ───────────────────────
-  if (flowType === 'recovery' && ready) {
+  if ((flowType === 'recovery' || flowType === 'invite') && ready) {
     return (
       <Layout>
-        <h1 className="text-white font-semibold text-xl mb-1">Nouveau mot de passe</h1>
+        <h1 className="text-white font-semibold text-xl mb-1">{flowType === 'invite' ? 'Choisissez votre mot de passe' : 'Nouveau mot de passe'}</h1>
         <p className="text-gray-400 text-sm mb-6">
-          Choisissez un nouveau mot de passe pour votre compte GÉOMTL.
+          {flowType === 'invite' ? 'Dernière étape pour activer votre compte GÉOMTL.' : 'Choisissez un nouveau mot de passe pour votre compte GÉOMTL.'}
         </p>
 
         {success ? (

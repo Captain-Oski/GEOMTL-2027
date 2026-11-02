@@ -32,7 +32,10 @@ export function AdminOrganisationsPage({
   partners,
   exhibitors,
   fiches,
+  partnersArchives,
+  exhibitorsArchives,
   peutModifier,
+  peutSupprimer,
 }: {
   ongletInitial: Onglet
   kiosques: Kiosque[]
@@ -40,7 +43,10 @@ export function AdminOrganisationsPage({
   partners: Partner[]
   exhibitors: Exhibitor[]
   fiches: FicheLiee[]
+  partnersArchives: Partner[]
+  exhibitorsArchives: Exhibitor[]
   peutModifier: boolean
+  peutSupprimer: boolean
 }) {
   const router = useRouter()
   const [onglet, setOnglet] = useState<Onglet>(ongletInitial)
@@ -129,7 +135,10 @@ export function AdminOrganisationsPage({
         <ListeOrganisations
           partners={partners}
           exhibitors={exhibitors}
+          partnersArchives={partnersArchives}
+          exhibitorsArchives={exhibitorsArchives}
           peutModifier={peutModifier}
+          peutSupprimer={peutSupprimer}
           executer={executer}
         />
       )}
@@ -141,6 +150,7 @@ export function AdminOrganisationsPage({
             demandes={demandes}
             kiosques={kiosques}
             peutModifier={peutModifier}
+            peutEffacer={peutSupprimer}
             executer={executer}
             ouvrirKiosque={ouvrirKiosque}
           />
@@ -187,11 +197,14 @@ function FicheKiosque({
   peutModifier: boolean
   executer: Executer
 }) {
-  const ficheInitiale = kiosque?.exhibitor_id ?? kiosque?.partner_id ?? ''
+  // Kiosque libre : la fiche d'une demande acceptée pour ce kiosque est proposée d'office
+  const acceptee = demandes.find((d) => d.statut === 'acceptee')
+  const ficheInitiale = kiosque?.exhibitor_id ?? kiosque?.partner_id ?? (kiosque?.statut === 'disponible' ? acceptee?.fiche_exhibitor_id ?? acceptee?.fiche_partner_id : null) ?? ''
+  const suggestion = kiosque?.statut === 'disponible' ? fiches.find((f) => f.id === ficheInitiale) : undefined
   const [ficheId, setFicheId] = useState(ficheInitiale)
-  const [nom, setNom] = useState(kiosque?.organisation_affichee ?? '')
-  const [logo, setLogo] = useState(kiosque?.logo_url ?? '')
-  const [site, setSite] = useState(kiosque?.site_url ?? '')
+  const [nom, setNom] = useState(kiosque?.organisation_affichee ?? suggestion?.nom ?? '')
+  const [logo, setLogo] = useState(kiosque?.logo_url ?? suggestion?.logo ?? '')
+  const [site, setSite] = useState(kiosque?.site_url ?? suggestion?.site ?? '')
   const [notes, setNotes] = useState(kiosque?.notes_internes ?? '')
   const [envoi, setEnvoi] = useState(false)
 
@@ -274,7 +287,7 @@ function FicheKiosque({
       {peutModifier ? (
         <div className="space-y-3">
           <label className="block text-xs font-medium text-gray-400">
-            Fiche liée (facultatif : reprend le nom, le logo et le site)
+            Fiche liée (reprend le nom, le logo et le site ; son numéro de kiosque suit le plan)
             <select value={ficheId} onChange={(e) => choisirFiche(e.target.value)} className={`${champ} mt-1`}>
               <option value="" className="bg-gray-900">Aucune</option>
               {fiches.map((f) => (

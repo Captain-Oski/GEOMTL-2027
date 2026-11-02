@@ -283,7 +283,7 @@ export function AdminUsersPage({ profiles, currentUserId }: Props) {
       {modal?.type === 'revoke' && (
         <ConfirmModal
           title="Révoquer l'accès"
-          message={`${modal.profile.full_name ?? modal.profile.email} perdra immédiatement l'accès à l'administration. Son compte Google reste actif.`}
+          message={`${modal.profile.full_name ?? modal.profile.email} perdra immédiatement l'accès à l'administration. Son compte reste en liste, en attente d'un rôle.`}
           confirmLabel="Révoquer"
           danger
           onConfirm={() => run(modal.profile.id, () => revokeUserAccess(modal.profile.id))}
@@ -293,7 +293,7 @@ export function AdminUsersPage({ profiles, currentUserId }: Props) {
       {modal?.type === 'delete' && (
         <ConfirmModal
           title="Supprimer définitivement"
-          message={`Supprimer le compte de ${modal.profile.full_name ?? modal.profile.email} ? Cette action est irréversible. L'utilisateur devra se reconnecter avec Google pour créer un nouveau compte.`}
+          message={`Supprimer le compte de ${modal.profile.full_name ?? modal.profile.email} ? Cette action est irréversible : pour lui redonner accès, il faudra créer un nouveau compte.`}
           confirmLabel="Supprimer définitivement"
           danger
           onConfirm={() => run(modal.profile.id, () => deleteUser(modal.profile.id))}
@@ -347,11 +347,11 @@ export function AdminUsersPage({ profiles, currentUserId }: Props) {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
             <div className="flex items-start gap-2">
               <RoleBadge role="admin" />
-              <p className="text-gray-400 text-xs">Accès complet - gestion des utilisateurs, suppression, contrats.</p>
+              <p className="text-gray-400 text-xs">Accès complet - gestion des utilisateurs et suppressions.</p>
             </div>
             <div className="flex items-start gap-2">
               <RoleBadge role="editor" />
-              <p className="text-gray-400 text-xs">Peut créer et modifier les partenaires, les exposants et les kiosques.</p>
+              <p className="text-gray-400 text-xs">Peut traiter les demandes, modifier les fiches, les kiosques et la programmation, sans rien supprimer.</p>
             </div>
             <div className="flex items-start gap-2">
               <RoleBadge role="viewer" />
@@ -466,8 +466,8 @@ export function AdminUsersPage({ profiles, currentUserId }: Props) {
 
         {/* Note explicative */}
         <p className="text-gray-600 text-xs mt-4">
-          Les utilisateurs apparaissent ici dès leur première connexion via Google OAuth.
-          Un rôle doit être attribué manuellement pour leur donner accès à l'administration.
+          Une personne invitée apparaît ici « En attente » dès que son compte est créé.
+          Un rôle doit lui être attribué pour lui donner accès à l&apos;administration.
         </p>
       </div>
     </>

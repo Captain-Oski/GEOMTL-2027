@@ -10,6 +10,13 @@ export const NOMBRE_KIOSQUES = 26;
 // Valeur du choix « Sans préférence » dans la liste des kiosques
 export const SANS_PREFERENCE = 0;
 
+// Fin de la conservation des demandes : 6 mois après la fin de l'événement
+export function dateFinConservation(finEvenement: string): Date {
+  const d = new Date(`${finEvenement}T12:00:00Z`);
+  d.setUTCMonth(d.getUTCMonth() + 6);
+  return d;
+}
+
 // Kiosques d'une demande, par ordre de préférence (vide : sans préférence)
 export function choixDemande(d: Pick<DemandeKiosque, 'kiosque_numero' | 'kiosque_choix_2' | 'kiosque_choix_3'>): number[] {
   return [d.kiosque_numero, d.kiosque_choix_2, d.kiosque_choix_3].filter((n): n is number => n !== null);

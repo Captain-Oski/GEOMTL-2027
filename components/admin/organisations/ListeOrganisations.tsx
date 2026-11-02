@@ -14,6 +14,7 @@ import {
   archivePartner,
   deletePartner,
   markLogoReceived,
+  restorePartner,
   togglePartnerVisibility,
   updatePaymentStatus,
 } from '@/lib/actions/partners'
@@ -21,6 +22,7 @@ import {
   archiveExhibitor,
   deleteExhibitor,
   markExhibitorLogoReceived,
+  restoreExhibitor,
   toggleExhibitorVisibility,
   updateExhibitorPaymentStatus,
 } from '@/lib/actions/exhibitors'
@@ -132,12 +134,18 @@ const selectClass =
 export function ListeOrganisations({
   partners,
   exhibitors,
+  partnersArchives,
+  exhibitorsArchives,
   peutModifier,
+  peutSupprimer,
   executer,
 }: {
   partners: Partner[]
   exhibitors: Exhibitor[]
+  partnersArchives: Partner[]
+  exhibitorsArchives: Exhibitor[]
   peutModifier: boolean
+  peutSupprimer: boolean
   executer: Executer
 }) {
   const [recherche, setRecherche] = useState('')
@@ -411,12 +419,14 @@ export function ListeOrganisations({
                                   >
                                     Archiver
                                   </button>
-                                  <button
-                                    onClick={() => confirm(`Supprimer définitivement ${l.societe} ?`) ? agir(l.id, () => a.supprimer(l.id), `${l.societe} supprimé.`) : setMenuOuvert(null)}
-                                    className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-gray-700"
-                                  >
-                                    Supprimer
-                                  </button>
+                                  {peutSupprimer && (
+                                    <button
+                                      onClick={() => confirm(`Supprimer définitivement ${l.societe} ?`) ? agir(l.id, () => a.supprimer(l.id), `${l.societe} supprimé.`) : setMenuOuvert(null)}
+                                      className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-gray-700"
+                                    >
+                                      Supprimer
+                                    </button>
+                                  )}
                                 </div>
                               </>
                             )}
@@ -430,6 +440,51 @@ export function ListeOrganisations({
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Fiches archivées : hors de la liste et des compteurs, restaurables */}
+      {partnersArchives.length + exhibitorsArchives.length > 0 && (
+        <details className="mt-6 rounded-xl border border-gray-800 bg-gray-900/50">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-gray-300">
+            Fiches archivées ({partnersArchives.length + exhibitorsArchives.length})
+          </summary>
+          <ul className="divide-y divide-gray-800/60 border-t border-gray-800">
+            {[
+              ...partnersArchives.map((p) => ({ fiche: p, genre: 'partenaire' as const, restaurer: restorePartner, supprimer: deletePartner })),
+              ...exhibitorsArchives.map((e) => ({ fiche: e, genre: 'exposant' as const, restaurer: restoreExhibitor, supprimer: deleteExhibitor })),
+            ].map(({ fiche, genre, restaurer, supprimer }) => (
+              <li key={`${genre}-${fiche.id}`} className={`flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm ${enCours === fiche.id ? 'opacity-50' : ''}`}>
+                <span className="text-white">
+                  {fiche.company_name}
+                  <span className="ml-2 text-xs text-gray-500">
+                    {genre === 'exposant' ? 'Exposant' : 'Partenaire'}
+                    {fiche.archived_at ? ` · archivée le ${new Date(fiche.archived_at).toLocaleDateString('fr-CA')}` : ''}
+                  </span>
+                </span>
+                {peutModifier && (
+                  <span className="flex gap-1">
+                    <button
+                      onClick={() => agir(fiche.id, () => restaurer(fiche.id), `${fiche.company_name} restaurée.`)}
+                      disabled={enCours === fiche.id}
+                      className="rounded px-2 py-1 text-xs text-gray-300 transition-colors hover:bg-gray-700 hover:text-white"
+                    >
+                      Restaurer
+                    </button>
+                    {peutSupprimer && (
+                      <button
+                        onClick={() => { if (confirm(`Supprimer définitivement ${fiche.company_name} ?`)) agir(fiche.id, () => supprimer(fiche.id), `${fiche.company_name} supprimée.`) }}
+                        disabled={enCours === fiche.id}
+                        className="rounded px-2 py-1 text-xs text-red-400 transition-colors hover:bg-gray-700"
+                      >
+                        Supprimer
+                      </button>
+                    )}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
     </div>
   )

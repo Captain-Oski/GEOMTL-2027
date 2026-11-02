@@ -1,11 +1,16 @@
 import { SessionForm } from '@/components/admin/programme/SessionForm'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
+import { peutEditer, sessionCourante } from '@/lib/auth/droits'
 
 export const metadata = {
   title: 'Nouvelle session - Admin GÉOMTL',
 }
 
-export default function NewSessionPage() {
+export default async function NewSessionPage() {
+  const { role } = await sessionCourante()
+  if (!peutEditer(role)) redirect('/admin/programme')
+
   return (
     <div className="p-6 lg:p-8">
       <div className="mb-6">

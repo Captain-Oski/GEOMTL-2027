@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { accepterDemande, changerStatutDemande, enregistrerNotesDemande } from '@/lib/actions/kiosques'
-import { LIBELLES_NIVEAUX, choixDemande } from '@/lib/demandes-kiosques'
+import { accepterDemande, changerStatutDemande, effacerDemandes, enregistrerNotesDemande } from '@/lib/actions/kiosques'
+import { EVENT_CONFIG } from '@/data/config'
+import { LIBELLES_NIVEAUX, choixDemande, dateFinConservation } from '@/lib/demandes-kiosques'
 import type { DemandeKiosque, Kiosque, NiveauDemande, StatutDemande } from '@/lib/supabase/types'
 
 const STATUTS: Record<StatutDemande, { libelle: string; classe: string }> = {
@@ -25,15 +26,19 @@ export function DemandesKiosques({
   demandes,
   kiosques,
   peutModifier,
+  peutEffacer,
   executer,
   ouvrirKiosque,
 }: {
   demandes: DemandeKiosque[]
   kiosques: Kiosque[]
   peutModifier: boolean
+  peutEffacer: boolean
   executer: Executer
   ouvrirKiosque: (numero: number | null) => void
 }) {
+  const finConservation = dateFinConservation(EVENT_CONFIG.datesEvenement.fin)
+  const conservationTerminee = new Date() >= finConservation
   const [filtre, setFiltre] = useState<Filtre>('actives')
   const [choisieId, setChoisieId] = useState<string | null>(null)
 
@@ -114,6 +119,28 @@ export function DemandesKiosques({
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Politique de confidentialité : demandes gardées jusqu'à 6 mois après l'événement */}
+        {peutEffacer && demandes.length > 0 && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-gray-400">
+            <span>
+              {conservationTerminee
+                ? 'La période de conservation est terminée : effacez les demandes. Les fiches créées restent en place.'
+                : `Conservation : les demandes devront être effacées à partir du ${finConservation.toLocaleDateString('fr-CA', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}.`}
+            </span>
+            {conservationTerminee && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm(`Effacer définitivement les ${demandes.length} demandes ?`)) executer(effacerDemandes, 'Demandes effacées.')
+                }}
+                className="rounded-lg bg-red-600 px-3 py-1.5 font-medium text-white hover:bg-red-500"
+              >
+                Effacer les demandes
+              </button>
+            )}
           </div>
         )}
       </div>

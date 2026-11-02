@@ -3,7 +3,9 @@
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { ETIQUETTE_KIOSQUES } from '@/lib/data/kiosques'
-import { choixDemande } from '@/lib/demandes-kiosques'
+import { exigerAdmin, exigerEditeur } from '@/lib/auth/droits'
+import { EVENT_CONFIG } from '@/data/config'
+import { choixDemande, dateFinConservation } from '@/lib/demandes-kiosques'
 import type { NiveauDemande, PartnerType, StatutDemande } from '@/lib/supabase/types'
 
 // Actions de l'admin sur les kiosques et les demandes de réservation.
@@ -15,18 +17,6 @@ import type { NiveauDemande, PartnerType, StatutDemande } from '@/lib/supabase/t
 const MOCK_MSG = 'Supabase non configuré - modifications non persistées en mode mock.'
 
 type Resultat = { error?: string; avertissement?: string }
-
-async function assertEditeur(): Promise<{ error?: string; userId?: string }> {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return { error: MOCK_MSG }
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Non authentifié.' }
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'admin' && profile?.role !== 'editor') {
-    return { error: 'Accès refusé - rôle admin ou éditeur requis.' }
-  }
-  return { userId: user.id }
-}
 
 // Le plan public et l'admin se mettent à jour tout de suite
 function rafraichir() {
@@ -56,7 +46,7 @@ function urlSure(valeur: string | null | undefined): string | null | false {
 const STATUTS_MANUELS: StatutDemande[] = ['nouvelle', 'en_traitement', 'refusee', 'archivee', 'spam']
 
 export async function changerStatutDemande(id: string, statut: StatutDemande): Promise<Resultat> {
-  const check = await assertEditeur()
+  const check = await exigerEditeur()
   if (check.error) return check
   if (!STATUTS_MANUELS.includes(statut)) return { error: 'Statut invalide.' }
 
@@ -71,7 +61,7 @@ export async function changerStatutDemande(id: string, statut: StatutDemande): P
 }
 
 export async function enregistrerNotesDemande(id: string, notes: string): Promise<Resultat> {
-  const check = await assertEditeur()
+  const check = await exigerEditeur()
   if (check.error) return check
   const supabase = await createClient()
   const { error } = await supabase
@@ -95,7 +85,7 @@ const TYPE_PARTENAIRE: Partial<Record<NiveauDemande, PartnerType>> = {
 // La fiche reprend le premier choix encore libre. La commandite de la soirée n'est
 // liée à aucun kiosque, sauf si un numéro a été demandé.
 export async function accepterDemande(id: string, niveau: Exclude<NiveauDemande, 'a_determiner'>): Promise<Resultat> {
-  const check = await assertEditeur()
+  const check = await exigerEditeur()
   if (check.error) return check
 
   const supabase = await createClient()
@@ -212,8 +202,39 @@ function preparer(d: DonneesReservation) {
 
 // Le seul passage à « Indisponible ». Écriture atomique : si le kiosque
 // n'est plus disponible (autre membre du comité plus rapide), rien ne change.
+// Le plan fait foi : confirmer, modifier ou libérer un kiosque met à jour le numéro
+// de la fiche liée. Un échec ici n'annule pas la réservation : il est signalé.
+type FicheDuKiosque = { exhibitor_id: string | null; partner_id: string | null }
+
+function ficheDuKiosque(k: FicheDuKiosque) {
+  if (k.exhibitor_id) return { table: 'exhibitors', id: k.exhibitor_id }
+  if (k.partner_id) return { table: 'partners', id: k.partner_id }
+  return null
+}
+
+async function inscrireSurFiche(supabase: Awaited<ReturnType<typeof createClient>>, numero: number, k: FicheDuKiosque): Promise<string | undefined> {
+  const fiche = ficheDuKiosque(k)
+  if (!fiche) return undefined
+  const { error } = await supabase.from(fiche.table).update({ booth_number: String(numero), booth_status: 'confirmed' }).eq('id', fiche.id)
+  if (error?.code === '23505') return `Kiosque ${numero} enregistré, mais ce numéro figure déjà sur une autre fiche : corrigez les fiches.`
+  if (error) return `Kiosque ${numero} enregistré, mais la fiche liée n'a pas été mise à jour : ${error.message}`
+  return undefined
+}
+
+async function retirerDeFiche(supabase: Awaited<ReturnType<typeof createClient>>, numero: number, k: FicheDuKiosque): Promise<string | undefined> {
+  const fiche = ficheDuKiosque(k)
+  if (!fiche) return undefined
+  const { error } = await supabase
+    .from(fiche.table)
+    .update({ booth_number: null, booth_status: 'to_assign' })
+    .eq('id', fiche.id)
+    .eq('booth_number', String(numero))
+  if (error) return `Kiosque ${numero} mis à jour, mais l'ancienne fiche liée n'a pas été modifiée : ${error.message}`
+  return undefined
+}
+
 export async function confirmerReservation(numero: number, donnees: DonneesReservation): Promise<Resultat> {
-  const check = await assertEditeur()
+  const check = await exigerEditeur()
   if (check.error) return check
   const p = preparer(donnees)
   if ('error' in p) return { error: p.error }
@@ -227,18 +248,20 @@ export async function confirmerReservation(numero: number, donnees: DonneesReser
     .select('numero')
   if (error) return { error: error.message }
   if (!data || data.length === 0) return { error: `Le kiosque ${numero} n'est plus disponible : il vient d'être réservé.` }
+  const avertissement = await inscrireSurFiche(supabase, numero, p.valeurs)
   rafraichir()
-  return {}
+  return { avertissement }
 }
 
 // Modifier le nom, le logo ou le lien d'un kiosque déjà réservé
 export async function modifierReservation(numero: number, donnees: DonneesReservation): Promise<Resultat> {
-  const check = await assertEditeur()
+  const check = await exigerEditeur()
   if (check.error) return check
   const p = preparer(donnees)
   if ('error' in p) return { error: p.error }
 
   const supabase = await createClient()
+  const { data: avant } = await supabase.from('kiosques').select('exhibitor_id, partner_id').eq('numero', numero).single()
   const { data, error } = await supabase
     .from('kiosques')
     .update({ ...p.valeurs, updated_by: check.userId })
@@ -247,15 +270,19 @@ export async function modifierReservation(numero: number, donnees: DonneesReserv
     .select('numero')
   if (error) return { error: error.message }
   if (!data || data.length === 0) return { error: `Le kiosque ${numero} n'est pas réservé.` }
+  const change = avant && (avant.exhibitor_id !== p.valeurs.exhibitor_id || avant.partner_id !== p.valeurs.partner_id)
+  const retrait = change ? await retirerDeFiche(supabase, numero, avant) : undefined
+  const inscription = await inscrireSurFiche(supabase, numero, p.valeurs)
   rafraichir()
-  return {}
+  return { avertissement: inscription ?? retrait }
 }
 
 export async function libererKiosque(numero: number): Promise<Resultat> {
-  const check = await assertEditeur()
+  const check = await exigerEditeur()
   if (check.error) return check
 
   const supabase = await createClient()
+  const { data: avant } = await supabase.from('kiosques').select('exhibitor_id, partner_id').eq('numero', numero).single()
   const { error } = await supabase
     .from('kiosques')
     .update({
@@ -269,6 +296,25 @@ export async function libererKiosque(numero: number): Promise<Resultat> {
     })
     .eq('numero', numero)
   if (error) return { error: error.message }
+  const avertissement = avant ? await retirerDeFiche(supabase, numero, avant) : undefined
   rafraichir()
-  return {}
+  return { avertissement }
+}
+
+// ─── Conservation ─────────────────────────────────────────
+
+// Politique de confidentialité : les demandes sont gardées jusqu'à 6 mois après
+// l'événement. Efface toutes les demandes ; les fiches créées ne sont pas touchées.
+export async function effacerDemandes(): Promise<Resultat & { nombre?: number }> {
+  const check = await exigerAdmin()
+  if (check.error) return check
+  if (new Date() < dateFinConservation(EVENT_CONFIG.datesEvenement.fin)) {
+    return { error: 'La période de conservation des demandes n\'est pas terminée.' }
+  }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase.from('demandes_kiosques').delete().not('id', 'is', null).select('id')
+  if (error) return { error: error.message }
+  rafraichir()
+  return { nombre: data?.length ?? 0 }
 }

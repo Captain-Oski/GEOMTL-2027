@@ -296,6 +296,25 @@ export const MOCK_ADMIN_PARTNERS: Partner[] = [
 
 // ─── Data fetching (Server Components) ────────────────────
 
+// Fiches archivées, pour pouvoir les restaurer depuis la liste
+export async function getArchivedPartners(): Promise<Partner[]> {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return []
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('partners')
+    .select('*')
+    .not('archived_at', 'is', null)
+    .order('archived_at', { ascending: false })
+
+  if (error) {
+    console.error('[getArchivedPartners]', error.message)
+    return []
+  }
+
+  return (data ?? []) as Partner[]
+}
+
 export async function getPartners(): Promise<Partner[]> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
     return MOCK_ADMIN_PARTNERS

@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
+import { exigerAdmin, exigerEditeur } from '@/lib/auth/droits'
 import type { SessionType, SessionDay, SessionStatus } from '@/lib/supabase/types'
 
 type SessionInput = {
@@ -49,8 +50,11 @@ export async function createSession(formData: FormData) {
     redirect('/admin/programme')
   }
 
+  const check = await exigerEditeur()
+  if (check.error) throw new Error(check.error)
+
   const input = parseForm(formData)
-  const client = createAdminClient()
+  const client = await createClient()
   const { error } = await client.from('sessions').insert(toRow(input))
 
   if (error) {
@@ -67,8 +71,11 @@ export async function updateSession(id: string, formData: FormData) {
     redirect('/admin/programme')
   }
 
+  const check = await exigerEditeur()
+  if (check.error) throw new Error(check.error)
+
   const input = parseForm(formData)
-  const client = createAdminClient()
+  const client = await createClient()
   const { error } = await client.from('sessions').update(toRow(input)).eq('id', id)
 
   if (error) {
@@ -83,7 +90,10 @@ export async function updateSession(id: string, formData: FormData) {
 export async function moveSession(id: string, day: SessionDay) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return
 
-  const client = createAdminClient()
+  const check = await exigerEditeur()
+  if (check.error) throw new Error(check.error)
+
+  const client = await createClient()
   const { error } = await client
     .from('sessions')
     .update({ day, updated_at: new Date().toISOString() })
@@ -99,7 +109,10 @@ export async function deleteSession(id: string) {
     return
   }
 
-  const client = createAdminClient()
+  const check = await exigerAdmin()
+  if (check.error) throw new Error(check.error)
+
+  const client = await createClient()
   const { error } = await client.from('sessions').delete().eq('id', id)
 
   if (error) {

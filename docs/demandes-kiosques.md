@@ -37,7 +37,8 @@ La page **Devenir partenaire** (`/fr/devenir-partenaire`) affiche le plan intera
 
 - Un clic sur un kiosque ouvre sa fiche, avec les demandes en cours qui le visent, quel que soit le rang du choix.
 - **Confirmer la réservation** : choisir la fiche liée (qui reprend le nom, le logo et le site), vérifier le nom affiché, puis confirmer. Le kiosque passe à « Indisponible » sur le site public, avec le logo.
-- **Libérer le kiosque** : il redevient « Disponible ».
+- **Libérer le kiosque** : il redevient « Disponible », et la fiche liée perd son numéro.
+- La fiche liée suit le plan : confirmer ou modifier une réservation inscrit le numéro sur la fiche. Pour un kiosque libre, la fiche d'une demande acceptée qui le vise est proposée d'office.
 - Si deux membres du comité confirment le même kiosque en même temps, seul le premier réussit ; le second reçoit un message d'erreur.
 
 Le rôle `viewer` voit tout, mais n'a aucun bouton d'action.
@@ -68,7 +69,7 @@ Les courriels sont en texte brut : rien de ce que tape le visiteur n'est interpr
   - `kiosques` : les 26 kiosques, leur état public et la fiche liée ;
   - `demandes_kiosques` : les demandes et leur suivi.
 - **Adresse IP :** jamais conservée. Seule une empreinte salée (`sha256(DEMANDES_SEL:ip)`) est gardée, pour la limite d'envois.
-- **Conservation :** jusqu'à 6 mois après l'événement, comme l'indique la [politique de confidentialité](../app/[locale]/confidentialite/page.tsx). La purge se fait à la main pour l'instant.
+- **Conservation :** jusqu'à 6 mois après l'événement, comme l'indique la [politique de confidentialité](../app/[locale]/confidentialite/page.tsx). À partir de cette date, un admin voit le bouton « Effacer les demandes » dans l'onglet Demandes ; les fiches créées restent en place.
 - **Plan public :** mis en cache 5 minutes, et rafraîchi aussitôt qu'un membre du comité change l'état d'un kiosque.
 
 ## Configuration
@@ -133,5 +134,4 @@ Attention : en local, le site utilise la **base de production**, et les courriel
 
 - Téléverser les logos dans Supabase Storage, au lieu de coller une adresse.
 - Exporter les demandes en CSV.
-- Purger automatiquement les demandes 6 mois après l'événement.
 - Ajouter un captcha (Cloudflare Turnstile), seulement si des robots passent malgré le champ piège et la limite d'envois.

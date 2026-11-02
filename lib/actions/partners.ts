@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { exigerAdmin, exigerEditeur } from '@/lib/auth/droits'
 import { revalidatePath } from 'next/cache'
 import type { Partner, PartnerStatus, PaymentStatus } from '@/lib/supabase/types'
 
@@ -15,6 +16,9 @@ export async function savePartner(
   if (MOCK_MODE) {
     return { error: 'Supabase non configuré - configurez .env.local pour sauvegarder les données.' }
   }
+
+  const check = await exigerEditeur()
+  if (check.error) return check
 
   if (!data.company_name?.trim()) return { error: 'Le nom de la compagnie est obligatoire.' }
   if (!data.partner_type) return { error: 'Le type de partenaire est obligatoire.' }
@@ -54,16 +58,23 @@ export async function savePartner(
 export async function deletePartner(id: string): Promise<{ error?: string }> {
   if (MOCK_MODE) return { error: 'Supabase non configuré.' }
 
+  const check = await exigerAdmin()
+  if (check.error) return check
+
   const supabase = await createClient()
-  const { error } = await supabase.from('partners').delete().eq('id', id)
+  const { data, error } = await supabase.from('partners').delete().eq('id', id).select('id')
 
   if (error) return { error: error.message }
+  if (!data?.length) return { error: 'Fiche introuvable : rien n\'a été supprimé.' }
   revalidatePath('/admin/organisations')
   return {}
 }
 
 export async function archivePartner(id: string): Promise<{ error?: string }> {
   if (MOCK_MODE) return { error: 'Supabase non configuré.' }
+
+  const check = await exigerEditeur()
+  if (check.error) return check
 
   const supabase = await createClient()
   const { error } = await supabase
@@ -76,6 +87,20 @@ export async function archivePartner(id: string): Promise<{ error?: string }> {
   return {}
 }
 
+export async function restorePartner(id: string): Promise<{ error?: string }> {
+  if (MOCK_MODE) return { error: 'Supabase non configuré.' }
+
+  const check = await exigerEditeur()
+  if (check.error) return check
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('partners').update({ archived_at: null }).eq('id', id)
+
+  if (error) return { error: error.code === '23505' ? 'Son numéro de kiosque figure maintenant sur une autre fiche : modifiez cette autre fiche, puis réessayez.' : error.message }
+  revalidatePath('/admin/organisations')
+  return {}
+}
+
 // ─── Quick actions ─────────────────────────────────────────
 
 export async function togglePartnerVisibility(
@@ -83,6 +108,9 @@ export async function togglePartnerVisibility(
   visible: boolean
 ): Promise<{ error?: string }> {
   if (MOCK_MODE) return { error: 'Supabase non configuré.' }
+
+  const check = await exigerEditeur()
+  if (check.error) return check
 
   const supabase = await createClient()
   const { error } = await supabase
@@ -101,6 +129,9 @@ export async function updatePartnerStatus(
 ): Promise<{ error?: string }> {
   if (MOCK_MODE) return { error: 'Supabase non configuré.' }
 
+  const check = await exigerEditeur()
+  if (check.error) return check
+
   const supabase = await createClient()
   const { error } = await supabase
     .from('partners')
@@ -118,6 +149,9 @@ export async function updatePaymentStatus(
 ): Promise<{ error?: string }> {
   if (MOCK_MODE) return { error: 'Supabase non configuré.' }
 
+  const check = await exigerEditeur()
+  if (check.error) return check
+
   const supabase = await createClient()
   const { error } = await supabase
     .from('partners')
@@ -134,6 +168,9 @@ export async function markLogoReceived(
   received: boolean
 ): Promise<{ error?: string }> {
   if (MOCK_MODE) return { error: 'Supabase non configuré.' }
+
+  const check = await exigerEditeur()
+  if (check.error) return check
 
   const supabase = await createClient()
   const { error } = await supabase

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback, useRef } from 'react'
+import { createContext, useContext, useState, useMemo, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import {
   DndContext,
@@ -58,6 +58,9 @@ const STATUS_OPTIONS: { value: SessionStatus | ''; label: string }[] = [
 const selectClass =
   'bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-rose-500'
 
+// Droits du rôle connecté : les actions serveur les revérifient de leur côté
+const Droits = createContext({ peutModifier: false, peutSupprimer: false })
+
 // ─── Carte session ────────────────────────────────────────
 
 function SessionCard({
@@ -75,6 +78,8 @@ function SessionCard({
   style?: React.CSSProperties
   innerRef?: (node: HTMLElement | null) => void
 }) {
+  const { peutModifier, peutSupprimer } = useContext(Droits)
+
   async function handleDelete(e: React.MouseEvent) {
     e.stopPropagation()
     if (confirm(`Supprimer « ${s.title_fr} » ?`)) {
@@ -93,7 +98,7 @@ function SessionCard({
         }`}
     >
       {/* Poignée de drag */}
-      <div
+      {peutModifier && <div
         {...(dragHandleListeners ?? {})}
         {...(dragHandleAttributes ?? {})}
         className={`mt-1 shrink-0 text-gray-600 hover:text-gray-300 transition-colors ${overlay ? 'cursor-grabbing' : 'cursor-grab'}`}
@@ -104,7 +109,7 @@ function SessionCard({
           <circle cx="7" cy="10" r="1.2"/><circle cx="13" cy="10" r="1.2"/>
           <circle cx="7" cy="16" r="1.2"/><circle cx="13" cy="16" r="1.2"/>
         </svg>
-      </div>
+      </div>}
 
       {/* Horaire */}
       <div className="w-14 shrink-0 text-center">
@@ -125,7 +130,7 @@ function SessionCard({
       </div>
 
       {/* Actions - masquées sauf au survol */}
-      {!overlay && (
+      {!overlay && peutModifier && (
         <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
           <Link
             href={`/admin/programme/${s.id}/edit`}
@@ -134,12 +139,12 @@ function SessionCard({
           >
             Modifier
           </Link>
-          <button
+          {peutSupprimer && <button
             onClick={handleDelete}
             className="text-xs text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 px-2.5 py-1 rounded-lg transition-colors"
           >
             ✕
-          </button>
+          </button>}
         </div>
       )}
     </div>
@@ -149,8 +154,10 @@ function SessionCard({
 // ─── Carte sortable ───────────────────────────────────────
 
 function SortableSessionCard({ session }: { session: Session }) {
+  const { peutModifier } = useContext(Droits)
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: session.id,
+    disabled: !peutModifier,
     data: { type: 'session', day: session.day },
   })
 
@@ -223,7 +230,16 @@ function DayColumn({
 
 // ─── Page principale ──────────────────────────────────────
 
-export function AdminProgrammePage({ sessions: initialSessions }: { sessions: Session[] }) {
+export function AdminProgrammePage({
+  sessions: initialSessions,
+  peutModifier,
+  peutSupprimer,
+}: {
+  sessions: Session[]
+  peutModifier: boolean
+  peutSupprimer: boolean
+}) {
+  const droits = useMemo(() => ({ peutModifier, peutSupprimer }), [peutModifier, peutSupprimer])
   const [sessions, setSessions] = useState(initialSessions)
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null)
   const lastOverDay = useRef<SessionDay | null>(null)
@@ -364,12 +380,12 @@ export function AdminProgrammePage({ sessions: initialSessions }: { sessions: Se
           <h1 className="text-2xl font-bold text-white">Programmation</h1>
           <p className="text-gray-500 text-sm mt-0.5">GÉOMTL 2027 · glisser-déposer pour réorganiser</p>
         </div>
-        <Link
+        {peutModifier && <Link
           href="/admin/programme/new"
           className="inline-flex items-center gap-2 bg-rose-500 hover:bg-rose-600 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors"
         >
           + Nouvelle session
-        </Link>
+        </Link>}
       </div>
 
       {/* Stats */}
@@ -418,6 +434,7 @@ export function AdminProgrammePage({ sessions: initialSessions }: { sessions: Se
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-gray-600">Aucune session trouvée.</div>
       ) : (
+        <Droits.Provider value={droits}>
         <DndContext
           sensors={sensors}
           collisionDetection={collisionDetection}
@@ -441,6 +458,7 @@ export function AdminProgrammePage({ sessions: initialSessions }: { sessions: Se
             {activeSession && <SessionCard session={activeSession} overlay />}
           </DragOverlay>
         </DndContext>
+        </Droits.Provider>
       )}
 
       {hasFilters && (

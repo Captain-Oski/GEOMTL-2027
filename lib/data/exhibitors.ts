@@ -263,6 +263,25 @@ export const MOCK_ADMIN_EXHIBITORS: Exhibitor[] = [
 
 // ─── Data fetching (Server Components) ────────────────────
 
+// Fiches archivées, pour pouvoir les restaurer depuis la liste
+export async function getArchivedExhibitors(): Promise<Exhibitor[]> {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return []
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('exhibitors')
+    .select('*')
+    .not('archived_at', 'is', null)
+    .order('archived_at', { ascending: false })
+
+  if (error) {
+    console.error('[getArchivedExhibitors]', error.message)
+    return []
+  }
+
+  return (data ?? []) as Exhibitor[]
+}
+
 export async function getExhibitors(): Promise<Exhibitor[]> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
     return MOCK_ADMIN_EXHIBITORS

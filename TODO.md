@@ -81,9 +81,13 @@ Les liens de ces modules ont été retirés du menu tant que les pages n'existen
 - [ ] **Export CSV** de la liste des partenaires / exposants
 - [ ] **Pagination** dans les tableaux admin (si > 50 entrées)
 - [ ] **Historique des modifications** par partenaire (audit log)
-- [ ] **Gestion des utilisateurs admin** - interface pour attribuer les rôles (pas juste SQL)
+- [x] **Gestion des utilisateurs admin** - section Utilisateurs (rôles, invitations, révocation)
+- [x] **Mot de passe oublié**, restauration des fiches archivées et effacement des demandes en fin de conservation
 
 ### Sécurité
+- [x] Vérification du rôle dans chaque action serveur (`lib/auth/droits.ts`)
+- [ ] Configurer un service d'envoi dans Supabase (SMTP) pour les invitations et les mots de passe oubliés
+- [ ] Après le 5 avril 2028 : effacer les demandes (bouton dans l'onglet Demandes)
 - [ ] Revoir les politiques RLS (tester avec différents rôles)
 - [ ] Ajouter un rate limiting sur les routes `/auth/*`
 - [ ] Configurer les headers de sécurité dans `next.config.js`

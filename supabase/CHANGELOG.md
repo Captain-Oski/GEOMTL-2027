@@ -24,6 +24,7 @@ Toutes les migrations sont dans [`supabase/migrations/`](./migrations/).
 | V003 | [V003__tables_support.sql](./migrations/V003__tables_support.sql) | Tables `contracts`, `contacts`, `activations`, `deliverables`, `kpis` · RLS | 2025-05-27 | ⏳ |
 | V004 | [V004__partners.sql](./migrations/V004__partners.sql) | Table `partners` complète · trigger · RLS · vue publique · seed | 2025-05-27 | ⏳ |
 | V005 | [V005__exhibitors.sql](./migrations/V005__exhibitors.sql) | Table `exhibitors` complète · trigger · RLS · vue publique · seed | 2025-05-27 | ⏳ |
+| V006 | [V006__sessions.sql](./migrations/V006__sessions.sql) | Table `sessions` du programme · RLS · vue publique | 2026-05-29 | ✅ |
 | V007 | [V007__kiosques.sql](./migrations/V007__kiosques.sql) | Tables `kiosques` (26 emplacements, état public décidé par le comité) et `demandes_kiosques` (formulaire public) · RLS sans accès anon | 2026-10-22 | ✅ |
 | V008 | [V008__types_partenaires.sql](./migrations/V008__types_partenaires.sql) | Types de partenaire : Or, Argent, Bronze, Soirée réseautage (`Networking`) · niveau `soiree` dans les demandes du site | 2026-10-23 | ✅ |
 | V009 | [V009__durcissement_securite.sql](./migrations/V009__durcissement_securite.sql) | `search_path` fixe sur `get_my_role`, `handle_new_user` et `set_updated_at` · `handle_new_user` retirée de l'API · choix documentés (vues publiques, `get_my_role`) | 2026-10-23 | ✅ |
@@ -60,15 +61,15 @@ Sans ça, les queries du client TypeScript ne trouveront pas les tables.
 
 ---
 
-## Configuration Google OAuth (à faire une seule fois)
+## Configuration de l'authentification (à faire une seule fois)
 
-1. Supabase Dashboard → **Authentication → Providers → Google → Enable**
-2. Ajouter Client ID + Client Secret (Google Cloud Console)
-3. Google Cloud Console → Credentials → OAuth 2.0 :
-   - Redirect URI : `https://<projet>.supabase.co/auth/v1/callback`
-4. Après votre première connexion, attribuer votre rôle admin :
+La connexion se fait par courriel et mot de passe.
+
+1. **Authentication → URL Configuration** : Site URL `https://www.geomtl.com`, et `https://www.geomtl.com/**` dans les Redirect URLs. En local, ajouter `http://localhost:3000/**`.
+2. **Authentication → SMTP Settings** : brancher un service d'envoi (par exemple le compte Google Workspace, comme pour les demandes). Sans cela, Supabase n'envoie les courriels d'invitation et de mot de passe oublié qu'à l'équipe de son organisation, et en très petit nombre.
+3. Attribuer le rôle du premier administrateur :
    ```sql
-   UPDATE public.profiles SET role = 'admin' WHERE email = 'votre@email.com';
+   UPDATE geomtl2027.profiles SET role = 'admin' WHERE email = 'votre@email.com';
    ```
 
 ## Variables d'environnement (.env.local)
@@ -78,16 +79,3 @@ NEXT_PUBLIC_SUPABASE_URL=https://votre-projet.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=votre-anon-key
 SUPABASE_SERVICE_ROLE_KEY=votre-service-role-key   ← serveur uniquement, jamais exposé
 ```
-
----
-
-## Fichiers dépréciés
-
-Ces fichiers à la racine de `supabase/` sont remplacés par les migrations numérotées ci-dessus.
-Ils peuvent être supprimés une fois les migrations appliquées.
-
-| Fichier | Remplacé par |
-|---------|-------------|
-| `schema.sql` | V001 + V002 + V003 (partiel) |
-| `partners.sql` | V004 |
-| `exhibitors.sql` | V005 |

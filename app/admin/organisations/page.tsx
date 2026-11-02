@@ -1,14 +1,13 @@
 import { getDemandesKiosques, getKiosquesAdmin } from '@/lib/data/kiosques'
-import { getExhibitors } from '@/lib/data/exhibitors'
-import { getPartners } from '@/lib/data/partners'
-import { createClient } from '@/lib/supabase/server'
+import { getArchivedExhibitors, getExhibitors } from '@/lib/data/exhibitors'
+import { getArchivedPartners, getPartners } from '@/lib/data/partners'
+import { peutEditer, sessionCourante } from '@/lib/auth/droits'
 import { LIBELLES_TYPES_PARTENAIRE } from '@/lib/partenaires'
 import {
   AdminOrganisationsPage,
   type FicheLiee,
   type Onglet,
 } from '@/components/admin/organisations/AdminOrganisationsPage'
-import type { Role } from '@/lib/supabase/types'
 
 const ONGLETS: Onglet[] = ['demandes', 'organisations', 'plan']
 
@@ -18,27 +17,20 @@ export const metadata = {
 
 export const dynamic = 'force-dynamic'
 
-async function roleCourant(): Promise<Role | null> {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return 'admin' // mode mock
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  return (data?.role as Role) ?? null
-}
-
 export default async function OrganisationsPage(
   props: {
     searchParams: Promise<{ onglet?: string }>
   }
 ) {
   const searchParams = await props.searchParams;
-  const [kiosques, demandes, exhibitors, partners, role] = await Promise.all([
+  const [kiosques, demandes, exhibitors, partners, partnersArchives, exhibitorsArchives, { role }] = await Promise.all([
     getKiosquesAdmin(),
     getDemandesKiosques(),
     getExhibitors(),
     getPartners(),
-    roleCourant(),
+    getArchivedPartners(),
+    getArchivedExhibitors(),
+    sessionCourante(),
   ])
 
   // Fiches qu'on peut relier à un kiosque réservé (nom, logo et site repris)
@@ -61,7 +53,10 @@ export default async function OrganisationsPage(
       partners={partners}
       exhibitors={exhibitors}
       fiches={fiches}
-      peutModifier={role === 'admin' || role === 'editor'}
+      partnersArchives={partnersArchives}
+      exhibitorsArchives={exhibitorsArchives}
+      peutModifier={peutEditer(role)}
+      peutSupprimer={role === 'admin'}
     />
   )
 }
